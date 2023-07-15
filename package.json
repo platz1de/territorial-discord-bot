@@ -1,0 +1,10 @@
+{
+  "name": "PointManager",
+  "version": "1.0.0",
+  "main": "PointManager.ts",
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "quickchart-js": "^3.1.2",
+    "sqlite3": "^5.1.6"
+  }
+}

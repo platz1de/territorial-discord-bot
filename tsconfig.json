@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+	"strict": true,
+	"outDir": "build",
+	"module": "commonjs",
+	"target": "es2022",
+	"moduleResolution": "node",
+	"resolveJsonModule": true,
+	"typeRoots": ["node_modules/@types"],
+	"types": ["node"]
+  },
+  "include": ["./"],
+  "exclude": ["./build", "./node_modules"]
+}
