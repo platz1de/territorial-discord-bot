@@ -3,25 +3,25 @@ import {config} from "../PointManager";
 import BotInteraction from "../util/BotInteraction";
 
 export default {
-    slashExclusive: false,
-    stringyNames: ["help", "commands", "cmds", "cmd", "command"],
-    slashData: new SlashCommandBuilder().setName("help").setDescription("See a command list"),
-    execute: async (interaction: ChatInputCommandInteraction) => {
-        await showHelpEmbed(new BotInteraction(interaction));
-    },
-    executeStringy: async (message: Message) => {
-        await showHelpEmbed(new BotInteraction(message));
-    }
+	slashExclusive: false,
+	stringyNames: ["help", "commands", "cmds", "cmd", "command"],
+	slashData: new SlashCommandBuilder().setName("help").setDescription("See a command list"),
+	execute: async (interaction: ChatInputCommandInteraction) => {
+		await showHelpEmbed(new BotInteraction(interaction));
+	},
+	executeStringy: async (message: Message) => {
+		await showHelpEmbed(new BotInteraction(message));
+	}
 }
 
 async function showHelpEmbed(interaction: BotInteraction) {
-    const prefix = config.prefix;
-    await interaction.reply({
-        embeds: [
-            new EmbedBuilder().setAuthor({name: interaction.client.user?.tag ?? "Unknown", iconURL: interaction.client.user?.displayAvatarURL()})
-                .setFields(
-                    {
-                        name: "General", value: `
+	const prefix = config.prefix;
+	await interaction.reply({
+		embeds: [
+			new EmbedBuilder().setAuthor({name: interaction.client.user?.tag ?? "Unknown", iconURL: interaction.client.user?.displayAvatarURL()})
+				.setFields(
+					{
+						name: "General", value: `
                         **${prefix}add <points>** - Register a win for yourself
                         **${prefix}remove-win <points>** - Remove a win (if misadded)
                         **${prefix}profile [@user]** - See your or someone else's profile
@@ -33,15 +33,15 @@ async function showHelpEmbed(interaction: BotInteraction) {
                         **${prefix}roles** - See all role rewards
                         **${prefix}help** - See this list
                         **${prefix}about** - See infos about the bot`
-                    },
-                    {
-                        name: "Moderation", value: `
+					},
+					{
+						name: "Moderation", value: `
                         </addwin:1055502533277265942> - Register a win for someone else
                         </removewin:1057961241273962506> - Remove a win from someone else
                         </modifypoints:1055502533277265943> - Modify a user's points or wins`
-                    },
-                    {
-                        name: "Admin", value: `
+					},
+					{
+						name: "Admin", value: `
                         </endseason:1055502533277265945> - End the current season
                         </multiplier set:1059233998058045512> - Set the current multiplier
                         </multiplier clear:1059233998058045512> - Remove the current multiplier
@@ -53,8 +53,8 @@ async function showHelpEmbed(interaction: BotInteraction) {
                         </cult description:1071538592805040221> - Set a cult's color
                         </cult icon:1071538592805040221> - Set a cult's icon
                         </cult open:1071538592805040221> - Toggle a cult's open status`
-                    }
-                ).setTimestamp().toJSON()
-        ]
-    });
+					}
+				).setTimestamp().toJSON()
+		]
+	});
 }

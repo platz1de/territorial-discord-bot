@@ -8,7 +8,7 @@ const QuickChart = require("quickchart-js");
 export default {
     slashExclusive: false,
     stringyNames: ["profile", "p", "bal", "balance", "pb"],
-    slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
+	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
         .addUserOption(option => option.setName("member").setDescription("The member to view")),
     execute: async (interaction: ChatInputCommandInteraction) => {
         if (!(interaction.guild instanceof Guild)) throw new Error("Guild not found");
