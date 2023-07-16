@@ -95,8 +95,7 @@ async function showProfileEmbed(setting: ServerSetting, member: GuildMember, int
             new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder().setCustomId("profile").setEmoji("👤").setStyle(ButtonStyle.Primary).setDisabled(page === 0),
                 new ButtonBuilder().setCustomId("progress").setEmoji("🚀").setStyle(ButtonStyle.Primary).setDisabled(page === 1),
-                new ButtonBuilder().setCustomId("chart").setEmoji("📊").setStyle(ButtonStyle.Primary).setDisabled(page === 2),
-                new ButtonBuilder().setCustomId("seasons").setEmoji("🗃️").setStyle(ButtonStyle.Primary).setDisabled(page === 3)
+                new ButtonBuilder().setCustomId("chart").setEmoji("📊").setStyle(ButtonStyle.Primary).setDisabled(page === 2)
             )
         ],
         files: files
@@ -107,7 +106,7 @@ async function showProfileEmbed(setting: ServerSetting, member: GuildMember, int
         if (i instanceof ButtonInteraction) {
             if (i.message.id !== msg.id || i.user.id !== interaction.user.id) return;
             await i.deferUpdate();
-            const pages = ["profile", "progress", "chart", "seasons"];
+            const pages = ["profile", "progress", "chart"];
             collector.stop();
             await showProfileEmbed(setting, member, interaction, pages.indexOf(i.customId));
         } else {
