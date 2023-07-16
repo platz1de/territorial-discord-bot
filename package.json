@@ -1,5 +1,5 @@
 {
-  "name": "PointManager",
+  "name": "point-manager",
   "version": "1.0.0",
   "main": "PointManager.ts",
   "dependencies": {
