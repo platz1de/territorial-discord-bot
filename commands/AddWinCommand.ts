@@ -1,8 +1,9 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Guild, GuildMember, Message, ModalBuilder, SlashCommandBuilder, TextInputBuilder, TextInputStyle, User} from "discord.js";
-import {config, db, hasModAccess, logAction} from "../PointManager";
+import {db, hasModAccess, logAction} from "../PointManager";
 import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil";
 import BotInteraction from "../util/BotInteraction";
 import {normalizeChanges, RewardAnswer} from "../util/RewardManager";
+import {ServerSetting} from "../BotSettingProvider";
 
 export default {
 	slashExclusive: false,
@@ -10,12 +11,12 @@ export default {
 	slashData: new SlashCommandBuilder().setName("addwin").setDescription("Add win to a member")
 		.addIntegerOption(option => option.setName("points").setDescription("The amount of points to add").setRequired(true))
 		.addUserOption(option => option.setName("member").setDescription("The member to add points to")),
-	execute: async (interaction: ChatInputCommandInteraction) => {
+	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
 		if (!(interaction.member instanceof GuildMember) || !(interaction.guild instanceof Guild)) throw new Error("Member not found");
 		const user: User = interaction.options.getUser("member") || interaction.user;
 		const member: GuildMember = await interaction.guild.members.fetch(user);
 		const points: number = interaction.options.getInteger("points", true);
-		if (member.id !== interaction.user.id && !hasModAccess(interaction.member)) {
+		if (member.id !== interaction.user.id && !hasModAccess(setting, interaction.member)) {
 			await interaction.editReply(createErrorEmbed(interaction.user, "❌ You can't add points to other members!"));
 			return;
 		}
@@ -24,22 +25,20 @@ export default {
 			await interaction.editReply(err);
 			return;
 		}
-		const multiplier = db.getSettingProvider().getMultiplier();
+		const multiplier = db.getSettingProvider().getMultiplier(setting);
 		let realPoints = points;
 		if (multiplier) {
 			realPoints = Math.ceil(points * multiplier.amount);
 		}
-		const response = await db.registerWin(member, realPoints);
-		if (member.id === interaction.user.id) {
-			logAction(interaction.member, `Added win of ${points} points`, Colors.Green, false);
-		} else {
-			logAction(interaction.member, `Added ${points} points to ${member}`, Colors.Yellow);
+		const response = await db.registerWin(setting, member, realPoints);
+		if (member.id !== interaction.user.id) {
+			logAction(setting, interaction.member, `Added ${points} points to ${member}`, Colors.Yellow);
 		}
-		await showAddWinEmbed(new BotInteraction(interaction), points, member, response.reward, multiplier);
+		await showAddWinEmbed(setting, new BotInteraction(interaction), points, member, response.reward || [], multiplier);
 	},
-	executeStringy: async (message: Message) => {
+	executeStringy: async (setting: ServerSetting, message: Message) => {
 		if (!message.member || !message.guild) throw new Error("Member not found");
-		if (!config.channel_id.includes(message.channel.id)) return;
+		if (!setting.channel_id.includes(message.channel.id)) return;
 		let args = message.content.split(" ");
 		args.shift();
 		const mentions: string[] = args.filter(arg => arg.match(/<@!?(\d+)>/));
@@ -59,7 +58,7 @@ export default {
 			await message.reply(createErrorEmbed(message.author, "❌ No valid members found!"));
 			return;
 		}
-		if (targets.length > 1 && !hasModAccess(message.member)) {
+		if (targets.length > 1 && !hasModAccess(setting, message.member)) {
 			await message.reply(createErrorEmbed(message.author, "❌ You can't add points to multiple members!"));
 			return;
 		}
@@ -81,37 +80,35 @@ export default {
 			await message.reply(err);
 			return;
 		}
-		const multiplier = db.getSettingProvider().getMultiplier();
+		const multiplier = db.getSettingProvider().getMultiplier(setting);
 		let realPoints = points;
 		if (multiplier) {
 			realPoints = Math.ceil(points * multiplier.amount);
 		}
 		if (targets.length === 1) {
 			const target = targets[0];
-			if (target.id !== message.author.id && !hasModAccess(message.member)) {
+			if (target.id !== message.author.id && !hasModAccess(setting, message.member)) {
 				await message.reply(createErrorEmbed(message.author, "❌ You can't add points to other members!"));
 				return;
 			}
-			const response = await db.registerWin(target, realPoints);
-			if (target.id === message.author.id) {
-				logAction(message.member, `Added win of ${points} points`, Colors.Green, false);
-			} else {
-				logAction(message.member, `Added ${points} points to ${target}`, Colors.Yellow);
+			const response = await db.registerWin(setting, target, realPoints);
+			if (target.id !== message.author.id) {
+				logAction(setting, message.member, `Added ${points} points to ${target}`, Colors.Yellow);
 			}
-			await showAddWinEmbed(new BotInteraction(message), points, target, response.reward, multiplier);
+			await showAddWinEmbed(setting, new BotInteraction(message), points, target, response.reward || [], multiplier);
 		} else {
 			let rewards: RewardAnswer[][] = [];
 			for (const target of targets) {
-				const response = await db.registerWin(target, realPoints);
-				rewards.push(response.reward);
+				const response = await db.registerWin(setting, target, realPoints);
+				rewards.push(response.reward || []);
 			}
-			logAction(message.member, `Added ${points} points to ${targets.length} members`, Colors.Yellow);
-			await showAddBulkEmbed(new BotInteraction(message), points, targets, rewards, multiplier);
+			logAction(setting, message.member, `Added ${points} points to ${targets.length} members`, Colors.Yellow);
+			await showAddBulkEmbed(setting, new BotInteraction(message), points, targets, rewards, multiplier);
 		}
 	}
 }
 
-async function showAddWinEmbed(interaction: BotInteraction, points: number, member: GuildMember, rewards: RewardAnswer[], multiplier?: { amount: number }) {
+async function showAddWinEmbed(setting: ServerSetting, interaction: BotInteraction, points: number, member: GuildMember, rewards: RewardAnswer[], multiplier?: { amount: number }) {
 	const msg = await interaction.reply({
 		embeds: [
 			new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Registered win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to ${interaction.user.id === member.id ? "your" : `${member}'s`} balance` + toRewardString(rewards, interaction.user.id === member.id, false)).setTimestamp().setColor(interaction.user.id === member.id ? Colors.Green : Colors.Yellow).toJSON()
@@ -153,10 +150,10 @@ async function showAddWinEmbed(interaction: BotInteraction, points: number, memb
 			if (multiplier) {
 				realDiff = Math.ceil(diff * multiplier.amount);
 			}
-			rewards = normalizeChanges(rewards, (await db.modifyPoints(member, realDiff)).reward);
-			logAction(i2.member, `Edited ${member}'s win points by ${diff} (${points} -> ${newPoints})`, Colors.Yellow);
+			rewards = normalizeChanges(rewards, (await db.modifyPoints(setting, member, realDiff)).reward || []);
+			logAction(setting, i2.member, `Edited ${member}'s win points by ${diff} (${points} -> ${newPoints})`, Colors.Yellow);
 			collector.stop();
-			await showAddWinEmbed(interaction, newPoints, member, rewards, multiplier);
+			await showAddWinEmbed(setting, interaction, newPoints, member, rewards, multiplier);
 			await i2.editReply({content: "✅ Points edited"});
 		}).catch(async () => {
 			//Timeout
@@ -171,7 +168,7 @@ async function showAddWinEmbed(interaction: BotInteraction, points: number, memb
 	});
 }
 
-async function showAddBulkEmbed(interaction: BotInteraction, points: number, members: GuildMember[], rewards: RewardAnswer[][], multiplier?: { amount: number }) {
+async function showAddBulkEmbed(setting: ServerSetting, interaction: BotInteraction, points: number, members: GuildMember[], rewards: RewardAnswer[][], multiplier?: { amount: number }) {
 	const msg = await interaction.reply({
 		embeds: [
 			new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Registered win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to\n${members.map((member, i) => (`${member}${toRewardString(rewards[i], false, true)}`)).join("\n")}`).setTimestamp().setColor(Colors.Yellow).toJSON()
@@ -214,11 +211,11 @@ async function showAddBulkEmbed(interaction: BotInteraction, points: number, mem
 				realDiff = Math.ceil(diff * multiplier.amount);
 			}
 			for (let i = 0; i < members.length; i++) {
-				rewards[i] = normalizeChanges(rewards[i], (await db.modifyPoints(members[i], realDiff)).reward);
+				rewards[i] = normalizeChanges(rewards[i], (await db.modifyPoints(setting, members[i], realDiff)).reward || []);
 			}
-			logAction(i2.member, `Edited ${i2.member}'s bulk add win points by ${diff} (${points} -> ${newPoints})`, Colors.Yellow);
+			logAction(setting, i2.member, `Edited ${i2.member}'s bulk add win points by ${diff} (${points} -> ${newPoints})`, Colors.Yellow);
 			collector.stop();
-			await showAddBulkEmbed(interaction, newPoints, members, rewards, multiplier);
+			await showAddBulkEmbed(setting, interaction, newPoints, members, rewards, multiplier);
 			await i2.editReply({content: "✅ Points edited"});
 		}).catch(async () => {
 			//Timeout

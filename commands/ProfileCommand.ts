@@ -2,6 +2,7 @@ import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, B
 import {db, rewards} from "../PointManager";
 import BotInteraction from "../util/BotInteraction";
 import {format} from "../util/EmbedUtil";
+import {ServerSetting} from "../BotSettingProvider";
 
 const QuickChart = require("quickchart-js");
 
@@ -10,12 +11,12 @@ export default {
     stringyNames: ["profile", "p", "bal", "balance", "pb"],
 	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
         .addUserOption(option => option.setName("member").setDescription("The member to view")),
-    execute: async (interaction: ChatInputCommandInteraction) => {
+    execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
         if (!(interaction.guild instanceof Guild)) throw new Error("Guild not found");
         const user: User = interaction.options.getUser("member") || interaction.user;
-        await showProfileEmbed(await interaction.guild.members.fetch(user.id), new BotInteraction(interaction), 0);
+        await showProfileEmbed(setting, await interaction.guild.members.fetch(user.id), new BotInteraction(interaction), 0);
     },
-    executeStringy: async (message: Message) => {
+    executeStringy: async (setting: ServerSetting, message: Message) => {
         if (!(message.guild instanceof Guild) || !(message.member instanceof GuildMember)) throw new Error("Guild not found");
         let user = message.author;
         if (message.content.split(" ").length > 1) {
@@ -26,34 +27,34 @@ export default {
             } else if (arg.match(/^[0-9]+$/)) {
                 await message.client.users.fetch(arg).catch(() => null).then(u => user = u ?? user);
             } else {
-                const res = await message.client.users.cache.find(u => u.tag.toLowerCase().startsWith(arg.toLowerCase()));
+                const res = message.client.users.cache.find(u => u.tag.toLowerCase().startsWith(arg.toLowerCase()));
                 if (res) user = res;
             }
         }
-        await showProfileEmbed(await message.guild.members.fetch(user.id).catch(() => null) ?? message.member, new BotInteraction(message), 0);
+        await showProfileEmbed(setting, await message.guild.members.fetch(user.id).catch(() => null) ?? message.member, new BotInteraction(message), 0);
     }
 }
 
-async function showProfileEmbed(member: GuildMember, interaction: BotInteraction, page: number) {
+async function showProfileEmbed(setting: ServerSetting, member: GuildMember, interaction: BotInteraction, page: number) {
     const embed = new EmbedBuilder();
     let files: AttachmentBuilder[] = [];
     switch (page) {
         case 0:
             const gp = db.getGlobalProvider();
-            const global = await gp.getData(member);
+            const global = await gp.getData(setting, member);
             embed.addFields(
-				{name: "Lifetime", value: `Points: ${format(global.points)} (#${await gp.getPointRank(member)})\nWins: ${format(global.wins)} (#${await gp.getWinRank(member)})`, inline: true}
+				{name: "Lifetime", value: `Points: ${format(global.points)} (#${await gp.getPointRank(setting, member)})\nWins: ${format(global.wins)} (#${await gp.getWinRank(setting, member)})`, inline: true}
             );
             break;
         case 1:
-            const next: { role: Snowflake, has: number, needs: number }[] = await rewards.getProgress(member);
+            const next: { role: Snowflake, has: number, needs: number }[] = await rewards.getProgress(setting, member);
             embed.addFields(
                 next.length > 0 ? {name: "Next Reward", value: next.map(r => `<@&${r.role}>\n[${'🟦'.repeat(Math.floor(r.has / r.needs * 10))}${'⬜'.repeat(10 - Math.floor(r.has / r.needs * 10))}] ${r.has}/${r.needs} (${Math.floor(r.has / r.needs * 100)}%)`).join("\n\n")}
                     : {name: "All done", value: "You already have all the rewards, good job!"}
             );
             break;
         case 2:
-            const data: { day: string, wins: number, points: number }[] = await db.getDailyProvider().getLegacyData(member, 30);
+            const data: { day: string, wins: number, points: number }[] = await db.getDailyProvider().getLegacyData(setting, member, 30);
             const qc = new QuickChart();
             qc.setConfig({
                 type: "line",
@@ -108,7 +109,7 @@ async function showProfileEmbed(member: GuildMember, interaction: BotInteraction
             await i.deferUpdate();
             const pages = ["profile", "progress", "chart", "seasons"];
             collector.stop();
-            await showProfileEmbed(member, interaction, pages.indexOf(i.customId));
+            await showProfileEmbed(setting, member, interaction, pages.indexOf(i.customId));
         } else {
             return;
         }

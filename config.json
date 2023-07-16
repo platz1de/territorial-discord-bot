@@ -1,20 +1,3 @@
 {
-  "token": "<INSERT TOKEN HERE>",
-  "guild_id": "<INSERT GUILD ID HERE>",
-  "channel_id": ["<INSERT VICTORY CHANNEL ID HERE>"],
-  "prefix": "!",
-  "log_channel_id": "<INSERT LOG CHANNEL ID HERE>",
-  "mod_roles": {
-	"<INSERT MOD ROLE ID HERE>": "<INSERT MOD ROLE NAME HERE>"
-  },
-  "rewards": [
-	{
-	  "description": "<INSERT DESCRIPTION HERE>",
-	  "req_desc": "<INSERT REQUIRED DESCRIPTION HERE>",
-	  "role_id": "<INSERT ROLE ID HERE>",
-	  "type": "<points/wins>",
-	  "dur": "<season/total>",
-	  "count": 0
-	}
-  ]
+  "token": "<INSERT TOKEN HERE>"
 }

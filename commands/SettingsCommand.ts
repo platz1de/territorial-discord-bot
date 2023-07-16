@@ -1,81 +1,57 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import BotInteraction from "../util/BotInteraction";
-import {db, rewards} from "../PointManager";
-import {Reward} from "../util/RewardManager";
+import {ServerSetting} from "../BotSettingProvider";
 
 export default {
 	slashExclusive: false,
 	stringyNames: ["settings", "options", "config", "conf", "st"],
-	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change your settings"),
-	execute: async (interaction: ChatInputCommandInteraction) => {
-		await showSettingsEmbed(new BotInteraction(interaction));
+	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings").setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
+	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
+		await showSettingsEmbed(setting, new BotInteraction(interaction));
 	},
-	executeStringy: async (message: Message) => {
-		await showSettingsEmbed(new BotInteraction(message));
+	executeStringy: async (setting: ServerSetting, message: Message) => {
+		await showSettingsEmbed(setting, new BotInteraction(message));
 	}
 }
 
-async function showSettingsEmbed(interaction: BotInteraction) {
-	const settings = db.getSettingProvider().getUserSetting(interaction.user.id);
-	const msg = await interaction.reply({
+async function showSettingsEmbed(setting: ServerSetting, interaction: BotInteraction) {
+	interaction.reply({
 		embeds: [
-			new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()})
+			new EmbedBuilder().setAuthor({name: interaction.guild.name, iconURL: interaction.guild.iconURL() || undefined})
+				.setTitle("Server Settings")
 				.addFields([
 					{
-						name: "Personal Settings",
-						value: `🏷️ Roles: \`${settings.roles}\` (${settings.roles === "all" ? "Keep all roles you've unlocked" : "Only the highest role you've unlocked"})`, inline: true
+						name: "❗ Prefix",
+						value: `\`${setting.prefix}\`\nUse \`${setting.prefix}setprefix <prefix>\` to change`, inline: true
 					},
+					{
+						name: "🏷️ Roles",
+						value: `\`${setting.roles}\` (${setting.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nUse \`${setting.prefix}toggleroles\` to toggle`, inline: true
+					},
+					{
+						name: "👑 Win Channels",
+						value: setting.channel_id.map((id) => `<#${id}>`).join("\n") + `\nUse \`${setting.prefix}removechannel <id>\` or \`${setting.prefix}addchannel <id>\` to manage`, inline: true
+					},
+					{
+						name: "📜 Log Channel",
+						value: `<#${setting.log_channel_id}>\nUse \`${setting.prefix}setlogchannel <id>\` to change`, inline: true
+					},
+					{
+						name: "📰 Update Channel",
+						value: `<#${setting.update_channel_id}>\nUse \`${setting.prefix}setupdatechannel <id>\` to change`, inline: true
+					},
+					{
+						name: "🛠 Mod Roles",
+						value: setting.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nUse \`${setting.prefix}removemodrole <id>\` or \`${setting.prefix}addmodrole <id>\` to manage`, inline: true
+					},
+					{
+						name: "🏆 Reward Roles",
+						value: `See all currect reward roles using \`${setting.prefix}roles\`\nUse \`${setting.prefix}removerewardrole <id>\` or \`${setting.prefix}addrewardrole <id> <points|wins> <amount>\` to manage`, inline: true
+					}
 				])
 				.setColor(Colors.Blurple).setFooter({
-				text: "Click the buttons below to change your settings"
+				text: "All settings can also be changed using /settings",
 			}).setTimestamp().toJSON()
-		],
-		components: [
-			new ActionRowBuilder<ButtonBuilder>().addComponents([
-				new ButtonBuilder().setCustomId("roles").setEmoji("🏷️").setStyle(ButtonStyle.Primary)
-			])
 		]
-	});
-
-	const collector = interaction.channel.createMessageComponentCollector({time: 60000});
-	collector.on("collect", async i => {
-		if (i instanceof ButtonInteraction) {
-			if (i.message.id !== msg.id || i.user.id !== interaction.user.id) return;
-			await i.deferUpdate();
-			const refresh = db.getSettingProvider().getUserSetting(interaction.user.id);
-			switch (i.customId) {
-				case "roles":
-					refresh.roles = refresh.roles === "all" ? "highest" : "all";
-					const member = await interaction.guild.members.fetch(interaction.user.id);
-					const eligible: Reward[] = await rewards.calculateEligibleRoles(member);
-					if (refresh.roles === "highest") {
-						const filtered = rewards.filterByHierarchy(eligible);
-						if (filtered.length > 0) {
-							const remove = [];
-							for (const role of eligible) {
-								if (!filtered.includes(role)) {
-									remove.push(role.role_id);
-								}
-							}
-							member.roles.remove(remove, "Settings changed to only keep highest role").catch();
-						}
-					} else {
-						member.roles.add(eligible.map(r => r.role_id), "Settings changed to all roles").catch();
-					}
-					break;
-			}
-			db.getSettingProvider().setUserSetting(interaction.user.id, refresh);
-		} else {
-			return;
-		}
-		collector.stop();
-		await showSettingsEmbed(interaction);
-	});
-
-	collector.on("end", async (collected, reason) => {
-		try {
-			reason === "time" && await msg.edit({components: []})
-		} catch (e) {
-		}
-	});
+	}).catch(console.error)
 }

@@ -1,8 +1,9 @@
-import {ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Guild, GuildMember, Message, SlashCommandBuilder, TextInputStyle, User} from "discord.js";
+import {ChatInputCommandInteraction, Colors, EmbedBuilder, Guild, GuildMember, Message, SlashCommandBuilder, User} from "discord.js";
 import {config, db, hasModAccess, logAction} from "../PointManager";
 import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil";
 import BotInteraction from "../util/BotInteraction";
 import {RewardAnswer} from "../util/RewardManager";
+import {ServerSetting} from "../BotSettingProvider";
 
 export default {
 	slashExclusive: false,
@@ -10,12 +11,12 @@ export default {
 	slashData: new SlashCommandBuilder().setName("removewin").setDescription("Remove win from a member")
 		.addIntegerOption(option => option.setName("points").setDescription("The amount of points to remove").setRequired(true))
 		.addUserOption(option => option.setName("member").setDescription("The member to remove from")),
-	execute: async (interaction: ChatInputCommandInteraction) => {
+	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
 		if (!(interaction.member instanceof GuildMember) || !(interaction.guild instanceof Guild)) throw new Error("Member not found");
 		const user: User = interaction.options.getUser("member") || interaction.user;
 		const member: GuildMember = await interaction.guild.members.fetch(user);
 		const points: number = interaction.options.getInteger("points", true);
-		if (member.id !== interaction.user.id && !hasModAccess(interaction.member)) {
+		if (member.id !== interaction.user.id && !hasModAccess(setting, interaction.member)) {
 			await interaction.editReply(createErrorEmbed(interaction.user, "❌ You can't remove points from other members!"));
 			return;
 		}
@@ -24,27 +25,25 @@ export default {
 			await interaction.editReply(err);
 			return;
 		}
-		const multiplier = await db.getSettingProvider().getMultiplier();
+		const multiplier = await db.getSettingProvider().getMultiplier(setting);
 		let realPoints = points;
 		if (multiplier) {
 			realPoints = Math.ceil(points * multiplier.amount);
 		}
-		const response = await db.removeWin(member, realPoints);
-		if (member.id === interaction.user.id) {
-			logAction(interaction.member, `Removed win of ${points} points`, Colors.Red, false);
-		} else {
-			logAction(interaction.member, `Removed win of ${points} points from ${member}`, Colors.Yellow);
+		const response = await db.removeWin(setting, member, realPoints);
+		if (member.id !== interaction.user.id) {
+			logAction(setting, interaction.member, `Removed win of ${points} points from ${member}`, Colors.Yellow);
 		}
-		await showRemoveWinEmbed(new BotInteraction(interaction), points, member, response.reward, multiplier);
+		await showRemoveWinEmbed(new BotInteraction(interaction), points, member, response.reward || [], multiplier);
 	},
-	executeStringy: async (message: Message) => {
+	executeStringy: async (setting: ServerSetting, message: Message) => {
 		if (!message.member) throw new Error("Member not found");
-		if (!config.channel_id.includes(message.channel.id)) return;
+		if (!setting.channel_id.includes(message.channel.id)) return;
 		let args = message.content.split(" ");
 		args.shift();
 		const target = message.mentions.members?.first() || message.member;
 		args = args.filter(arg => !arg.startsWith("<@"));
-		if (target.id !== message.author.id && !hasModAccess(message.member)) {
+		if (target.id !== message.author.id && !hasModAccess(setting, message.member)) {
 			await message.reply(createErrorEmbed(message.author, "❌ You can't remove points from other members!"));
 			return;
 		}
@@ -61,18 +60,16 @@ export default {
 			await message.reply(err);
 			return;
 		}
-		const multiplier = await db.getSettingProvider().getMultiplier();
+		const multiplier = await db.getSettingProvider().getMultiplier(setting);
 		let realPoints = points;
 		if (multiplier) {
 			realPoints = Math.ceil(points * multiplier.amount);
 		}
-		const response = await db.removeWin(target, realPoints);
-		if (target.id === message.author.id) {
-			logAction(message.member, `Removed win of ${points} points`, Colors.Red, false);
-		} else {
-			logAction(message.member, `Removed win of ${points} points from ${target.id}`, Colors.Yellow);
+		const response = await db.removeWin(setting, target, realPoints);
+		if (target.id !== message.author.id) {
+			logAction(setting, message.member, `Removed win of ${points} points from ${target.id}`, Colors.Yellow);
 		}
-		await showRemoveWinEmbed(new BotInteraction(message), points, target, response.reward, multiplier);
+		await showRemoveWinEmbed(new BotInteraction(message), points, target, response.reward || [], multiplier);
 	}
 }
 

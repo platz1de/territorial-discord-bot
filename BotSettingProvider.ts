@@ -1,113 +1,68 @@
 import * as fs from "fs";
 import {Snowflake} from "discord.js";
+import {rewards} from "./PointManager";
 
-interface UserSetting {
+export interface ServerSetting {
 	roles: "all" | "highest",
-	cult: number | null
+	guild_id: string,
+	channel_id: Snowflake[],
+	log_channel_id: string,
+	update_channel_id: string,
+	prefix: string,
+	mod_roles: Snowflake[],
+	rewards: { role_id: string, type: "points" | "wins", count: number }[],
+	multiplier: { amount: number, end: number | null, description: string } | null
 }
 
-const settings: { season: number, seasonNames: string[], users: { [key: Snowflake]: UserSetting }, multiplier: { amount: number, end: number | null, description: string } | null, cult_message: Snowflake | null, cults: { [key: number]: { name: string, role: Snowflake | null, icon: string, description: string, open: boolean, legacy: boolean, emoji: string } } } = require("./settings.json");
-const defaultUserSetting: UserSetting = {roles: "all", cult: null};
+const settings: ServerSetting[] = require("./settings.json");
+const indices: { [key: Snowflake]: number } = {};
+export const defaultSetting: ServerSetting = {roles: "all", guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", prefix: "!", mod_roles: [], rewards: [], multiplier: null};
+
+for (const i in settings) {
+	indices[settings[i].guild_id] = parseInt(i);
+	rewards.loadRewards(settings[i]);
+}
 
 function updateSettings() {
-	fs.writeFileSync("./settings.json", JSON.stringify(settings, null, 4));
+	fs.writeFile("./settings.json", JSON.stringify(settings, null, 4), (err) => {
+		if (err) {
+			console.error(err);
+		}
+	});
 }
 
-function getSeason() {
-	return settings.season;
+export function getServerContext(guild: Snowflake): ServerSetting | null {
+	if (indices.hasOwnProperty(guild)) {
+		return settings[indices[guild]];
+	}
+	return null;
 }
 
-function getSeasonNameInternal(season: number) {
-	return settings.seasonNames[season] || "Unknown Season";
-}
-
-function endSeason(name: string) {
-	settings.season++;
-	settings.seasonNames.push(name);
+export function setServerSetting(setting: ServerSetting) {
+	if (indices.hasOwnProperty(setting.guild_id)) {
+		settings[indices[setting.guild_id]] = setting;
+	} else {
+		settings.push(setting);
+		indices[setting.guild_id] = settings.length - 1;
+	}
 	updateSettings();
 }
 
-function getUserSetting(user: Snowflake) {
-	const stg: UserSetting = settings.users[user] || {...defaultUserSetting};
-	if (stg.cult === undefined) stg.cult = null;
-	return stg;
-}
-
-function setUserSetting(user: Snowflake, setting: UserSetting) {
-	settings.users[user] = setting;
-	updateSettings();
-}
-
-function getMultiplier(): { amount: number, end: number | null, description: string } | null {
-	if (settings.multiplier === null) return null;
-	if (settings.multiplier.end !== null && settings.multiplier.end < Date.now()) {
-		settings.multiplier = null;
+export function getMultiplier(setting: ServerSetting): { amount: number, end: number | null, description: string } | null {
+	if (setting.multiplier === null) return null;
+	if (setting.multiplier.end !== null && setting.multiplier.end < Date.now()) {
+		setting.multiplier = null;
 		updateSettings();
 	}
-	return settings.multiplier;
+	return setting.multiplier;
 }
 
-function setMultiplier(amount: number, end: number | null, description: string) {
-	settings.multiplier = {amount, end, description};
+export function setMultiplier(setting: ServerSetting, amount: number, end: number | null, description: string) {
+	setting.multiplier = {amount, end, description};
 	updateSettings();
 }
 
-function clearMultiplier() {
-	settings.multiplier = null;
+export function clearMultiplier(setting: ServerSetting) {
+	setting.multiplier = null;
 	updateSettings();
 }
-
-function getCultData(cult: number) {
-	return settings.cults[cult];
-}
-
-function getFullName(cult: number): string {
-	return settings.cults[cult].emoji + " " + settings.cults[cult].name;
-}
-
-function addCult(name: string, description: string, icon: string, emoji: Snowflake) {
-	settings.cults[Math.max(...Object.keys(settings.cults).map(k => parseInt(k)), 0) + 1] = {name, role: null, icon, description, open: true, legacy: false, emoji};
-	updateSettings();
-}
-
-function updateCult(cult: number, name: string, description: string, icon: string, role: Snowflake | null, open: boolean, emoji: Snowflake) {
-	settings.cults[cult] = {name, description, icon, role, open, legacy: false, emoji};
-	updateSettings();
-}
-
-function removeCult(cult: number) {
-	settings.cults[cult].legacy = true;
-	for (const user in settings.users) {
-		if (settings.users[user].cult === cult) {
-			settings.users[user].cult = null;
-		}
-	}
-	updateSettings();
-}
-
-function getAllCults() {
-	let cults: { id: number, name: string, description: string, open: boolean, legacy: boolean, emoji: Snowflake }[] = [];
-	for (const cult in settings.cults) {
-		cults.push({id: parseInt(cult), name: settings.cults[cult].name, description: settings.cults[cult].description, open: settings.cults[cult].open, legacy: settings.cults[cult].legacy, emoji: settings.cults[cult].emoji});
-	}
-	return cults;
-}
-
-function getCults() {
-	return getAllCults().filter(c => !c.legacy);
-}
-
-function getCultMessage() {
-	return settings.cult_message;
-}
-
-function setCultMessage(message: Snowflake) {
-	settings.cult_message = message;
-	updateSettings();
-}
-
-function getCultMembers(cult: number): number {
-	return Object.values(settings.users).filter(u => u.cult === cult).length;
-}
-
-export {getSeason, endSeason, getSeasonNameInternal, getUserSetting, setUserSetting, getMultiplier, setMultiplier, clearMultiplier, getCultData, addCult, removeCult, getCults, updateCult, getCultMessage, setCultMessage, getCultMembers, getAllCults, getFullName};

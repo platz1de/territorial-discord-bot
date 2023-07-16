@@ -9,10 +9,14 @@ function createConfirmationEmbed(user: User, message: string) {
 	return {embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setDescription(message).setTimestamp().setColor(Colors.Green).toJSON()]};
 }
 
-function toRewardString(rewards: RewardAnswer[], personal: boolean, short: boolean) {
+export function sendUninitializedError(user: User) {
+	return createErrorEmbed(user, "This server has not been initialized yet! Please use `!setup` to initialize some basic settings.");
+}
+
+export function toRewardString(rewards: RewardAnswer[], personal: boolean, short: boolean) {
 	if (rewards.length === 0) return "";
 	if (rewards[0].type === "Removed") personal = false;
-	return (short ? "\n" : "\n\n") + (personal ? "You gained" : rewards[0].type) + (rewards.length === 1 ? " " : ":\n") + rewards.map(r => `<@&${r.role_id}> for ${r.description}`).join("\n") + (personal ? "\nKeep up the good work! 💪" : "");
+	return (short ? "\n" : "\n\n") + (personal ? "You gained" : rewards[0].type) + (rewards.length === 1 ? " " : ":\n") + rewards.map(r => `<@&${r.role_id}> for reaching ${r.role_amount} ${r.role_type}`).join("\n") + (personal ? "\nKeep up the good work! 💪" : "");
 }
 
 function format(points: number) {
@@ -32,4 +36,4 @@ function formatTime(time: number) {
 	return res.trim();
 }
 
-export {createErrorEmbed, toRewardString, format, formatTime, createConfirmationEmbed};
+export {createErrorEmbed, format, formatTime, createConfirmationEmbed};

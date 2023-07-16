@@ -1,5 +1,6 @@
 import {GuildMember, Snowflake} from "discord.js";
 import {Database} from "sqlite3";
+import {ServerSetting} from "../BotSettingProvider";
 
 class DailyDataBaseProvider {
 	db: Database;
@@ -8,65 +9,45 @@ class DailyDataBaseProvider {
 		this.db = db;
 	}
 
-	async getPoints(member: GuildMember): Promise<number> {
-		return await this.getData(member).then((data) => data.points);
+	async modifyPoints(setting: ServerSetting, member: GuildMember, points: number) {
+		return points > 0 ? this.addPoints(setting, member, points) : this.removePoints(setting, member, -points);
 	}
 
-	async getWins(member: GuildMember): Promise<number> {
-		return await this.getData(member).then((data) => data.wins);
+	async modifyWins(setting: ServerSetting, member: GuildMember, wins: number) {
+		return wins > 0 ? this.addWins(setting, member, wins) : this.removeWins(setting, member, -wins);
 	}
 
-	async getData(member: GuildMember): Promise<{ points: number, wins: number }> {
-		return new Promise((resolve, reject) => {
-			this.db.get<{ points: number, wins: number }>("SELECT points, wins FROM daily_points WHERE member = ? AND day = date()", [member.id], (err, row) => {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(row || {points: 0, wins: 0});
-				}
-			});
-		});
+	async addPoints(setting: ServerSetting, member: GuildMember, points: number) {
+		return this.addData(setting, member, points, 0);
 	}
 
-	async modifyPoints(member: GuildMember, points: number) {
-		return points > 0 ? this.addPoints(member, points) : this.removePoints(member, -points);
+	async addWins(setting: ServerSetting, member: GuildMember, wins: number) {
+		return this.addData(setting, member, 0, wins);
 	}
 
-	async modifyWins(member: GuildMember, wins: number) {
-		return wins > 0 ? this.addWins(member, wins) : this.removeWins(member, -wins);
-	}
-
-	async addPoints(member: GuildMember, points: number) {
-		return this.addData(member, points, 0);
-	}
-
-	async addWins(member: GuildMember, wins: number) {
-		return this.addData(member, 0, wins);
-	}
-
-	async addData(member: GuildMember, points: number, wins: number) {
+	async addData(setting: ServerSetting, member: GuildMember, points: number, wins: number) {
 		if (isNaN(points) || isNaN(wins)) return;
 		points = Math.max(0, Math.round(points));
 		wins = Math.max(0, Math.round(wins));
-		this.db.run("INSERT INTO daily_points (member, day, points, wins) VALUES (?, date(), ?, ?) ON CONFLICT (member, day) DO UPDATE SET points = points + ?, wins = wins + ?", [member.id, points, wins, points, wins]);
+		this.db.run("INSERT INTO daily_points (guild, member, day, points, wins) VALUES (?, ?, date(), ?, ?) ON CONFLICT (guild, member, day) DO UPDATE SET points = points + ?, wins = wins + ?", [setting.guild_id, member.id, points, wins, points, wins]);
 	}
 
-	async removePoints(member: GuildMember, points: number) {
-		return this.removeData(member, points, 0);
+	async removePoints(setting: ServerSetting, member: GuildMember, points: number) {
+		return this.removeData(setting, member, points, 0);
 	}
 
-	async removeWins(member: GuildMember, wins: number) {
-		return this.removeData(member, 0, wins);
+	async removeWins(setting: ServerSetting, member: GuildMember, wins: number) {
+		return this.removeData(setting, member, 0, wins);
 	}
 
-	async removeData(member: GuildMember, points: number, wins: number) {
+	async removeData(setting: ServerSetting, member: GuildMember, points: number, wins: number) {
 		if (isNaN(points) || isNaN(wins)) return;
 		points = Math.max(0, Math.round(points));
 		wins = Math.max(0, Math.round(wins));
-		this.db.run("INSERT INTO daily_points (member, day, points, wins) VALUES (?, date(), 0, 0) ON CONFLICT (member, day) DO UPDATE SET points = MAX(0, points - ?), wins = MAX(0, wins - ?)", [member.id, points, wins]);
+		this.db.run("INSERT INTO daily_points (guild, member, day, points, wins) VALUES (?, ?, date(), 0, 0) ON CONFLICT (guild, member, day) DO UPDATE SET points = MAX(0, points - ?), wins = MAX(0, wins - ?)", [setting.guild_id, member.id, points, wins]);
 	}
 
-	async getEntryCount(duration: number): Promise<number> {
+	async getEntryCount(setting: ServerSetting, duration: number): Promise<number> {
 		if (isNaN(duration)) duration = 7;
 		duration = Math.min(30, Math.max(1, Math.floor(duration)));
 		return new Promise((resolve, reject) => {
@@ -80,13 +61,13 @@ class DailyDataBaseProvider {
 		});
 	}
 
-	async getPointLeaderboard(duration: number, page: number): Promise<{ member: Snowflake, points: number }[]> {
+	async getPointLeaderboard(setting: ServerSetting, duration: number, page: number): Promise<{ member: Snowflake, points: number }[]> {
 		if (isNaN(page)) page = 1;
 		page = Math.max(1, Math.floor(page)) - 1;
 		if (isNaN(duration)) duration = 7;
 		duration = Math.min(30, Math.max(1, Math.floor(duration)));
 		return new Promise((resolve, reject) => {
-			this.db.all<{ member: Snowflake, points: number }>("SELECT member, SUM(points) AS points FROM daily_points WHERE day >= date('now', ? || ' days') GROUP BY member ORDER BY points DESC LIMIT 10 OFFSET ?", [-duration, page * 10], (err, rows) => {
+			this.db.all<{ member: Snowflake, points: number }>("SELECT member, SUM(points) AS points FROM daily_points WHERE guild = ? AND day >= date('now', ? || ' days') GROUP BY member ORDER BY points DESC LIMIT 10 OFFSET ?", [setting.guild_id, -duration, page * 10], (err, rows) => {
 				if (err) {
 					reject(err);
 				} else {
@@ -96,13 +77,13 @@ class DailyDataBaseProvider {
 		});
 	}
 
-	async getWinLeaderboard(duration: number, page: number): Promise<{ member: Snowflake, wins: number }[]> {
+	async getWinLeaderboard(setting: ServerSetting, duration: number, page: number): Promise<{ member: Snowflake, wins: number }[]> {
 		if (isNaN(page)) page = 1;
 		page = Math.max(1, Math.floor(page)) - 1;
 		if (isNaN(duration)) duration = 7;
 		duration = Math.min(30, Math.max(1, Math.floor(duration)));
 		return new Promise((resolve, reject) => {
-			this.db.all<{ member: Snowflake, wins: number }>("SELECT member, SUM(wins) AS wins FROM daily_points WHERE day >= date('now', ? || ' days') GROUP BY member ORDER BY wins DESC LIMIT 10 OFFSET ?", [-duration, page * 10], (err, rows) => {
+			this.db.all<{ member: Snowflake, wins: number }>("SELECT member, SUM(wins) AS wins FROM daily_points WHERE guild = ? AND day >= date('now', ? || ' days') GROUP BY member ORDER BY wins DESC LIMIT 10 OFFSET ?", [setting.guild_id, -duration, page * 10], (err, rows) => {
 				if (err) {
 					reject(err);
 				} else {
@@ -112,11 +93,11 @@ class DailyDataBaseProvider {
 		});
 	}
 
-	async getLegacyData(member: GuildMember, duration: number): Promise<{ day: string, points: number, wins: number }[]> {
+	async getLegacyData(setting: ServerSetting, member: GuildMember, duration: number): Promise<{ day: string, points: number, wins: number }[]> {
 		if (isNaN(duration)) duration = 7;
 		duration = Math.min(30, Math.max(1, Math.floor(duration)));
 		return new Promise((resolve, reject) => {
-			this.db.all<{ day: string, points: number, wins: number }>("SELECT day, points, wins FROM daily_points WHERE member = ? AND day >= date('now', ? || ' days') ORDER BY day DESC", [member.id, -duration], (err, rows) => {
+			this.db.all<{ day: string, points: number, wins: number }>("SELECT day, points, wins FROM daily_points WHERE guild = ? AND member = ? AND day >= date('now', ? || ' days') ORDER BY day DESC", [setting.guild_id, member.id, -duration], (err, rows) => {
 				if (err) {
 					reject(err);
 				} else {

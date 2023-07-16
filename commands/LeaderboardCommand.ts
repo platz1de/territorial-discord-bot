@@ -1,7 +1,8 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, range, StringSelectMenuBuilder, StringSelectMenuInteraction, SlashCommandBuilder} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
 import {db} from "../PointManager";
 import BotInteraction from "../util/BotInteraction";
 import {format} from "../util/EmbedUtil";
+import {ServerSetting} from "../BotSettingProvider";
 
 export default {
 	slashExclusive: false,
@@ -17,27 +18,27 @@ export default {
 				))
 		}
 	},
-	execute: async (interaction: ChatInputCommandInteraction) => {
+	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
 		let page: number = interaction.options.getInteger("page") || 1;
 		const type: number = interaction.options.getInteger("type") || 0;
-		await buildLeaderboardPage(new BotInteraction(interaction), page, type);
+		await buildLeaderboardPage(setting, new BotInteraction(interaction), page, type);
 	},
-	executeStringy: async (message: Message) => {
+	executeStringy: async (setting: ServerSetting, message: Message) => {
 		if (message.content.split(" ").length > 1) {
 			if (message.content.split(" ")[1].slice(-1) === "d") {
-				await buildDailyLeaderboardPage(new BotInteraction(message), 1, 0, parseInt(message.content.split(" ")[1].slice(0, -1)));
+				await buildDailyLeaderboardPage(setting, new BotInteraction(message), 1, 0, parseInt(message.content.split(" ")[1].slice(0, -1)));
 				return;
 			}
 		}
-		await buildLeaderboardPage(new BotInteraction(message), 1, 0);
+		await buildLeaderboardPage(setting, new BotInteraction(message), 1, 0);
 	}
 }
 
-async function buildLeaderboardPage(interaction: BotInteraction, page: number, type: number) {
+async function buildLeaderboardPage(setting: ServerSetting, interaction: BotInteraction, page: number, type: number) {
 	const provider = db.getGlobalProvider();
-	const max: number = Math.ceil(await provider.getEntryCount() / 10);
+	const max: number = Math.ceil(await provider.getEntryCount(setting) / 10);
 	page = Math.max(1, Math.min(page, max));
-	const leaderboard = type === 0 ? await provider.getPointLeaderboard(page) : await provider.getWinLeaderboard(page);
+	const leaderboard = type === 0 ? await provider.getPointLeaderboard(setting, page) : await provider.getWinLeaderboard(setting, page);
 	const msg = await interaction.reply({
 		embeds: [new EmbedBuilder().setColor(Colors.Blurple)
 			.setAuthor({name: `Leaderboard of ${interaction.guild.name}`, iconURL: interaction.guild.iconURL() || undefined})
@@ -74,7 +75,7 @@ async function buildLeaderboardPage(interaction: BotInteraction, page: number, t
 				return;
 			}
 			collector.stop();
-			await buildLeaderboardPage(interaction, page, type);
+			await buildLeaderboardPage(setting, interaction, page, type);
 		} catch (e) {
 			console.log(e);
 		}
@@ -88,13 +89,13 @@ async function buildLeaderboardPage(interaction: BotInteraction, page: number, t
 	});
 }
 
-async function buildDailyLeaderboardPage(interaction: BotInteraction, page: number, type: number, duration: number) {
+async function buildDailyLeaderboardPage(setting: ServerSetting, interaction: BotInteraction, page: number, type: number, duration: number) {
 	if (isNaN(duration)) duration = 7;
 	duration = Math.max(1, Math.min(duration, 30));
 	const provider = db.getDailyProvider();
-	const max: number = Math.ceil(await provider.getEntryCount(duration) / 10);
+	const max: number = Math.ceil(await provider.getEntryCount(setting, duration) / 10);
 	page = Math.max(1, Math.min(page, max));
-	const leaderboard = type === 0 ? await provider.getPointLeaderboard(duration, page) : await provider.getWinLeaderboard(duration, page);
+	const leaderboard = type === 0 ? await provider.getPointLeaderboard(setting, duration, page) : await provider.getWinLeaderboard(setting, duration, page);
 	const msg = await interaction.reply({
 		embeds: [new EmbedBuilder().setColor(Colors.Blurple)
 			.setAuthor({name: `Leaderboard for last ${duration} days`, iconURL: interaction.guild.iconURL() || undefined})
@@ -129,7 +130,7 @@ async function buildDailyLeaderboardPage(interaction: BotInteraction, page: numb
 				}
 			}
 			collector.stop();
-			await buildDailyLeaderboardPage(interaction, page, type, duration);
+			await buildDailyLeaderboardPage(setting, interaction, page, type, duration);
 		} catch (e) {
 			console.log(e);
 		}

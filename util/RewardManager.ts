@@ -1,25 +1,29 @@
 import {Colors, GuildMember, Snowflake} from "discord.js";
 import {db, logAction} from "../PointManager";
-import {getSettingProvider} from "../db/DataBaseManager";
+import {ServerSetting} from "../BotSettingProvider";
 
-let rewards: Reward[] = [];
-let hierarchy: number[] = [];
+let rewards: { [key: string]: Reward[] } = {};
+let hierarchy: { [key: string]: number[] } = {};
 
-interface RewardAnswer {
+export interface RewardAnswer {
 	type: string,
-	description: string,
+	role_type: string,
+	role_amount: number,
 	role_id: string
 }
 
-function getRewardList(): Reward[] {
-	return rewards;
+export function getRewardList(setting: ServerSetting): Reward[] {
+	let list: Reward[] = [];
+	for (const reward of hierarchy[setting.guild_id]) {
+		list.push(rewards[setting.guild_id][reward]);
+	}
+	return list;
 }
 
-async function calculateEligibleRoles(member: GuildMember) {
-	const total = await db.getGlobalProvider().getData(member);
+export async function calculateEligibleRoles(setting: ServerSetting, member: GuildMember) {
+	const total = await db.getGlobalProvider().getData(setting, member);
 	const roles: Reward[] = [];
-	for (const reward of rewards) {
-		if (reward.type === "special") continue;
+	for (const reward of rewards[setting.guild_id]) {
 		if (total[reward.type] >= reward.count) {
 			roles.push(reward);
 		}
@@ -27,107 +31,102 @@ async function calculateEligibleRoles(member: GuildMember) {
 	return roles;
 }
 
-function filterByHierarchy(roles: Reward[]): Reward[] {
-	let highest = {season: {wins: -1, points: -1}, total: {wins: -1, points: -1}};
+export function filterByHierarchy(roles: Reward[]): Reward[] {
+	let highestPoints: { amount: number, obj: Reward | null } = {amount: -1, obj: null};
+	let highestWins: { amount: number, obj: Reward | null } = {amount: -1, obj: null};
 	for (const role of roles) {
-		const index = hierarchy.findIndex(r => r === rewards.findIndex(r => r.role_id === role.role_id));
-		if (index === -1) {
-			throw new Error("Reward not found in hierarchy");
-		}
-		if (role.type === "special") {
-			throw new Error("Special role found in hierarchy");
-		}
-		if (index > highest[role.dur][role.type]) {
-			highest[role.dur][role.type] = index;
+		if (role.type === "points" && role.count > highestPoints.amount) {
+			highestPoints.amount = role.count;
+			highestPoints.obj = role;
+		} else if (role.type === "wins" && role.count > highestWins.amount) {
+			highestWins.amount = role.count;
+			highestWins.obj = role;
 		}
 	}
 	let filtered: Reward[] = [];
-	filtered.push(rewards[hierarchy[highest.season.wins]]);
-	filtered.push(rewards[hierarchy[highest.season.points]]);
-	filtered.push(rewards[hierarchy[highest.total.wins]]);
-	filtered.push(rewards[hierarchy[highest.total.points]]);
+	highestPoints.obj !== null && filtered.push(highestPoints.obj);
+	highestWins.obj !== null && filtered.push(highestWins.obj);
 	return filtered;
 }
 
-async function getProgress(member: GuildMember): Promise<{ role: Snowflake, has: number, needs: number }[]> {
-	const total = await db.getGlobalProvider().getData(member);
+export async function getProgress(setting: ServerSetting, member: GuildMember): Promise<{ role: Snowflake, has: number, needs: number }[]> {
+	const total = await db.getGlobalProvider().getData(setting, member);
 	const progress: { role: Snowflake, has: number, needs: number }[] = [];
-	for (const id of hierarchy) {
-		const reward = rewards[id];
-		if (reward.type === "special") continue;
+	for (const id of hierarchy[setting.guild_id]) {
+		const reward = rewards[setting.guild_id][id];
 		if (total[reward.type] < reward.count) {
-			if (progress[(reward.dur === "total" ? 0 : 2) + (reward.type === "points" ? 0 : 1)]) continue;
-			progress[(reward.dur === "total" ? 0 : 2) + (reward.type === "points" ? 0 : 1)] = {role: reward.role_id, has: total[reward.type], needs: reward.count};
+			if (progress[(reward.type === "points" ? 0 : 1)]) continue;
+			progress[(reward.type === "points" ? 0 : 1)] = {role: reward.role_id, has: total[reward.type], needs: reward.count};
 		}
 	}
 	return progress;
 }
 
-function loadRewards(rewardData: { description: string, req_desc: string, role_id: string, type: "wins" | "points" | "special", dur: "season" | "total", count: number, category: string }[]) {
-	let cache: { season: { wins: number[], points: number[] }, total: { wins: number[], points: number[] } } = {season: {wins: [], points: []}, total: {wins: [], points: []}};
-	for (const data of rewardData) {
-		rewards.push(new Reward(data.description, data.req_desc, data.role_id, data.type, data.dur, data.count, data.category));
-		data.type !== "special" && cache[data.dur][data.type].push(rewards.length - 1);
+export function loadRewards(setting: ServerSetting) {
+	let winCache: number[] = [];
+	let pointCache: number[] = [];
+	rewards[setting.guild_id] = [];
+	for (const data of setting.rewards) {
+		rewards[setting.guild_id].push(new Reward(data.role_id, data.type, data.count));
+		if (data.type === "wins") {
+			winCache.push(rewards[setting.guild_id].length - 1);
+		} else {
+			pointCache.push(rewards[setting.guild_id].length - 1);
+		}
 	}
-	cache.season.wins.sort((a, b) => rewards[a].count - rewards[b].count);
-	cache.season.points.sort((a, b) => rewards[a].count - rewards[b].count);
-	cache.total.wins.sort((a, b) => rewards[a].count - rewards[b].count);
-	cache.total.points.sort((a, b) => rewards[a].count - rewards[b].count);
-	hierarchy = cache.season.wins.concat(cache.season.points).concat(cache.total.wins).concat(cache.total.points);
+	winCache.sort((a, b) => rewards[setting.guild_id][a].count - rewards[setting.guild_id][b].count);
+	pointCache.sort((a, b) => rewards[setting.guild_id][a].count - rewards[setting.guild_id][b].count);
+	hierarchy[setting.guild_id] = winCache.concat(pointCache);
 }
 
-function checkChanges(member: GuildMember, type: string, dur: string, from: number, to: number): RewardAnswer[] {
+export function checkChanges(setting: ServerSetting, member: GuildMember, type: string, from: number, to: number): RewardAnswer[] {
 	let changes: RewardAnswer[] = [];
-	for (const reward of rewards) {
-		changes = reward.checkChange(member, type, dur, from, to, changes);
+	for (const reward of rewards[setting.guild_id]) {
+		changes = reward.checkChange(setting, member, type, from, to, changes);
 	}
 
-	if (getSettingProvider().getUserSetting(member.id).roles === "highest") {
-		setTimeout(() => applyHierarchy(member, changes), 2000);
+	if (setting.roles === "highest") {
+		setTimeout(() => applyHierarchy(setting, member, changes), 2000);
 	}
 
 	return changes;
 }
 
-function applyHierarchy(member: GuildMember, changes: RewardAnswer[]) {
+function applyHierarchy(setting: ServerSetting, member: GuildMember, changes: RewardAnswer[]) {
 	if (changes.length === 0) return;
+	let lowestPoints = -1;
+	let lowestWins = -1;
+	for (const reward of changes) {
+		const index = hierarchy[setting.guild_id].findIndex(r => r === rewards[setting.guild_id].findIndex(r => r.role_id === reward.role_id));
+		if (index === -1) {
+			throw new Error("Reward not found in hierarchy");
+		}
+		if (rewards[setting.guild_id][index].type === "points" && index < lowestPoints) {
+			lowestPoints = index;
+		} else if (rewards[setting.guild_id][index].type === "wins" && index < lowestWins) {
+			lowestWins = index;
+		}
+	}
+	const replacePoints = hierarchy[setting.guild_id][lowestPoints - 1] || -1;
+	const replaceWins = hierarchy[setting.guild_id][lowestWins - 1] || -1;
 	if (changes[0].type === "Added") {
-		for (const reward of changes) {
-			const index = hierarchy.findIndex(r => r === rewards.findIndex(r => r.role_id === reward.role_id));
-			if (index === -1) {
-				throw new Error("Reward not found in hierarchy");
-			}
-			const replace = hierarchy[index - 1] || -1;
-			if (replace !== -1) {
-				if (rewards[replace].type !== rewards.find(r => r.role_id === reward.role_id)?.type || rewards[replace].dur !== rewards.find(r => r.role_id === reward.role_id)?.dur) {
-					continue;
-				}
-				console.log(`Replacing ${rewards[replace].role_id} with ${reward.role_id}`);
-				member.roles.remove(rewards[replace].role_id, "Meets higher criteria").then().catch(console.error);
-			}
+		if (replacePoints !== -1 && rewards[setting.guild_id][replacePoints].type === "points") {
+			member.roles.remove(rewards[setting.guild_id][replacePoints].role_id, "Meets higher criteria").then().catch(console.error);
+		}
+		if (replaceWins !== -1 && rewards[setting.guild_id][replaceWins].type === "wins") {
+			member.roles.remove(rewards[setting.guild_id][replaceWins].role_id, "Meets higher criteria").then().catch(console.error);
 		}
 	} else {
-		let lowest = -1;
-		for (const reward of changes) {
-			const index = hierarchy.findIndex(r => r === rewards.findIndex(r => r.role_id === reward.role_id));
-			if (index === -1) {
-				throw new Error("Reward not found in hierarchy");
-			}
-			if (index > lowest) {
-				lowest = index;
-			}
+		if (replacePoints !== -1 && rewards[setting.guild_id][lowestPoints].type === "points") {
+			member.roles.add(rewards[setting.guild_id][lowestPoints].role_id, "No longer meets higher criteria").then().catch(console.error);
 		}
-		const replace = hierarchy[lowest - 1] || -1;
-		if (replace !== -1) {
-			if (rewards[replace].type !== rewards.find(r => r.role_id === changes[0].role_id)?.type || rewards[replace].dur !== rewards.find(r => r.role_id === changes[0].role_id)?.dur) {
-				return;
-			}
-			member.roles.add(rewards[replace].role_id, "No longer meets higher criteria").catch(console.error);
+		if (replaceWins !== -1 && rewards[setting.guild_id][lowestWins].type === "wins") {
+			member.roles.add(rewards[setting.guild_id][lowestWins].role_id, "No longer meets higher criteria").then().catch(console.error);
 		}
 	}
 }
 
-function normalizeChanges(changes: RewardAnswer[], add: RewardAnswer[]): RewardAnswer[] {
+export function normalizeChanges(changes: RewardAnswer[], add: RewardAnswer[]): RewardAnswer[] {
 	for (const change of add) {
 		const index = changes.findIndex(c => c.role_id === change.role_id);
 		if (index === -1) {
@@ -139,48 +138,30 @@ function normalizeChanges(changes: RewardAnswer[], add: RewardAnswer[]): RewardA
 	return changes;
 }
 
-class Reward {
-	description: string;
-	req_desc: string;
+export class Reward {
 	role_id: string;
-	type: "wins" | "points" | "special";
-	dur: "total" | "season";
+	type: "wins" | "points";
 	count: number;
-	category: string;
 
-	constructor(description: string, req_desc: string, role_id: string, type: "points" | "wins" | "special", dur: "season" | "total", count: number, category: string = "Other") {
-		this.description = description;
-		this.req_desc = req_desc;
+	constructor(role_id: string, type: "points" | "wins", count: number) {
 		this.role_id = role_id;
 		this.type = type;
-		this.dur = dur;
 		this.count = count;
-		this.category = category;
 	}
 
-	checkChange(member: GuildMember, type: string, dur: string, from: number, to: number, changes: RewardAnswer[]) {
-		if (this.type !== type || this.dur !== dur) return changes;
+	checkChange(setting: ServerSetting, member: GuildMember, type: string, from: number, to: number, changes: RewardAnswer[]) {
+		if (this.type !== type) return changes;
 		if (from < this.count && to >= this.count) {
-			member.roles.add(this.role_id, "Reward for " + this.req_desc).then(() => {
-				logAction(member, "Added role <@&" + this.role_id + "> for " + this.req_desc, Colors.Blurple);
+			member.roles.add(this.role_id, `Reward for reaching ${this.count} ${this.type}`).then(() => {
+				logAction(setting, member, `Added role <@&${this.role_id}> for reaching ${this.count} ${this.type}`, Colors.Blurple);
 			}).catch(console.error);
-			changes.push(this.getPosChangeData());
+			changes.push({type: "Added", role_type: this.type, role_amount: this.count, role_id: this.role_id});
 		} else if (from >= this.count && to < this.count) {
-			member.roles.remove(this.role_id, "Reward for " + this.req_desc + " was removed do to no longer meeting the requirement").then(() => {
-				logAction(member, "Removed role <@&" + this.role_id + "> for no longer meeting criteria", Colors.Blurple);
+			member.roles.remove(this.role_id, `Reward for reaching ${this.count} ${this.type} was removed do to no longer meeting the requirement`).then(() => {
+				logAction(setting, member, `Removed role <@&${this.role_id}> for no longer meeting criteria`, Colors.Blurple);
 			});
-			changes.push(this.getNegChangeData());
+			changes.push({type: "Removed", role_type: this.type, role_amount: this.count, role_id: this.role_id});
 		}
 		return changes;
 	}
-
-	getPosChangeData() {
-		return {type: "Added", description: this.req_desc, role_id: this.role_id};
-	}
-
-	getNegChangeData() {
-		return {type: "Removed", description: this.req_desc, role_id: this.role_id};
-	}
 }
-
-export {loadRewards, checkChanges, normalizeChanges, Reward, RewardAnswer, getRewardList, calculateEligibleRoles, filterByHierarchy, getProgress};

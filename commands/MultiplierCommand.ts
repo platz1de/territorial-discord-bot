@@ -1,6 +1,7 @@
-import {ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, PermissionFlagsBits, SlashCommandBuilder, TextInputStyle} from "discord.js";
+import {ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {db, logAction} from "../PointManager";
 import BotInteraction from "../util/BotInteraction";
+import {ServerSetting, setMultiplier} from "../BotSettingProvider";
 
 export default {
 	slashExclusive: false,
@@ -17,12 +18,12 @@ export default {
 		)
 		.addSubcommand(sub => sub.setName("info").setDescription("Show the current multiplier"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-	execute: async (interaction: ChatInputCommandInteraction) => {
+	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
 		if (!(interaction.member instanceof GuildMember)) throw new Error("Member not found");
 		const subcommand = interaction.options.getSubcommand();
 		switch (subcommand) {
 			case "set":
-				if (db.getSettingProvider().getMultiplier() !== null) {
+				if (db.getSettingProvider().getMultiplier(setting) !== null) {
 					await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`A multiplier is already set, clear that one first!`).setTimestamp().setColor(Colors.Red).toJSON()]});
 					return;
 				}
@@ -43,17 +44,17 @@ export default {
 					}
 					processedEnd = date.getTime();
 				}
-				await db.getSettingProvider().setMultiplier(multiplier, processedEnd, description);
-				logAction(interaction.member, `Multiplier set to ${multiplier}x`, Colors.Yellow);
+				await db.getSettingProvider().setMultiplier(setting, multiplier, processedEnd, description);
+				logAction(setting, interaction.member, `Multiplier set to ${multiplier}x`, Colors.Yellow);
 				await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Set multiplier to ${multiplier}x with description \`${description}\`${processedEnd ? ` ending at <t:${Math.min(processedEnd / 1000)}>` : ""}`).setTimestamp().setColor(Colors.Green).toJSON()]});
 				break;
 			case "clear":
-				db.getSettingProvider().clearMultiplier();
-				logAction(interaction.member, `Multiplier cleared`, Colors.Red);
+				db.getSettingProvider().clearMultiplier(setting);
+				logAction(setting, interaction.member, `Multiplier cleared`, Colors.Red);
 				await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Cleared the multiplier!`).setTimestamp().setColor(Colors.Yellow).toJSON()]});
 				break;
 			case "setend":
-				const currentMultiplier = db.getSettingProvider().getMultiplier();
+				const currentMultiplier = db.getSettingProvider().getMultiplier(setting);
 				if (!currentMultiplier) {
 					await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`No multiplier set`).setTimestamp().setColor(Colors.Red).toJSON()]});
 					return;
@@ -65,21 +66,21 @@ export default {
 					return;
 				}
 				currentMultiplier.end = date.getTime();
-				db.getSettingProvider().setMultiplier(currentMultiplier.amount, currentMultiplier.end, currentMultiplier.description);
-				logAction(interaction.member, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
+				db.getSettingProvider().setMultiplier(setting, currentMultiplier.amount, currentMultiplier.end, currentMultiplier.description);
+				logAction(setting, interaction.member, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
 				await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Set multiplier end date to <t:${Math.min(date.getTime() / 1000)}>`).setTimestamp().setColor(Colors.Green).toJSON()]});
 				break;
 			case "info":
-				await sendMultiplierInformation(new BotInteraction(interaction));
+				await sendMultiplierInformation(setting, new BotInteraction(interaction));
 		}
 	},
-	executeStringy: async (message: Message) => {
-		await sendMultiplierInformation(new BotInteraction(message));
+	executeStringy: async (setting: ServerSetting, message: Message) => {
+		await sendMultiplierInformation(setting, new BotInteraction(message));
 	}
 }
 
-async function sendMultiplierInformation(interaction: BotInteraction) {
-	const multiplier = db.getSettingProvider().getMultiplier();
+async function sendMultiplierInformation(setting: ServerSetting, interaction: BotInteraction) {
+	const multiplier = db.getSettingProvider().getMultiplier(setting);
 	if (!multiplier) {
 		await interaction.reply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`No multiplier is currently active`).setTimestamp().setColor(Colors.Blurple).toJSON()]});
 		return;
