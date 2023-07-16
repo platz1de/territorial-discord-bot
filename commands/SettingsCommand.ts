@@ -20,7 +20,7 @@ export default {
 		.addSubcommand(sub => sub.setName("addrewardrole").setDescription("Add a role to the reward roles").addRoleOption(option => option.setName("role").setDescription("The role to add").setRequired(true)).addIntegerOption(option => option.setName("type").setDescription("The type of reward").setRequired(true).addChoices({name: "Points", value: 0}, {name: "Wins", value: 1})).addIntegerOption(option => option.setName("amount").setDescription("The amount of points or wins required").setRequired(true)))
 		.addSubcommand(sub => sub.setName("removerewardrole").setDescription("Remove a role from the reward roles").addRoleOption(option => option.setName("role").setDescription("The role to remove").setRequired(true)))
 		.addSubcommand(sub => sub.setName("show").setDescription("Show the current settings"))
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
+		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
 		const sub = interaction.options.getSubcommand();
 		const index = settingNames.indexOf(sub);
