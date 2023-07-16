@@ -100,7 +100,7 @@ async function handleSetting(setting: ServerSetting, botInteraction: BotInteract
 		setting.roles = setting.roles === "all" ? "highest" : "all";
 		await botInteraction.reply(`Set roles to \`${setting.roles}\``);
 	} else if (index <= 5) {
-		let channel = botInteraction.base instanceof ChatInputCommandInteraction ? botInteraction.base.options.getChannel("channel", true) : botInteraction.guild.channels.cache.get(botInteraction.base.content.split(" ")[1] || "");
+		let channel = botInteraction.base instanceof ChatInputCommandInteraction ? botInteraction.base.options.getChannel("channel", true) : botInteraction.guild.channels.cache.get((botInteraction.base.content.split(" ")[1] || "").replace(/<#|>/g, "") || "");
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
 			await botInteraction.reply("Invalid channel!");
 			return;
@@ -132,7 +132,7 @@ async function handleSetting(setting: ServerSetting, botInteraction: BotInteract
 				break;
 		}
 	} else {
-		let role = botInteraction.base instanceof ChatInputCommandInteraction ? botInteraction.base.options.getRole("role", true) : botInteraction.guild.roles.cache.get(botInteraction.base.content.split(" ")[1] || "");
+		let role = botInteraction.base instanceof ChatInputCommandInteraction ? botInteraction.base.options.getRole("role", true) : botInteraction.guild.roles.cache.get((botInteraction.base.content.split(" ")[1] || "").replace(/<@&|>/g, "") || "");
 		if (!role) {
 			await botInteraction.reply("Invalid role!");
 			return;
