@@ -23,9 +23,10 @@ async function showAboutEmbed(setting: ServerSetting, interaction: BotInteractio
 			new EmbedBuilder().setAuthor({name: interaction.client.user?.tag ?? "Unknown", iconURL: interaction.client.user?.displayAvatarURL()})
 				.setFields(
 					{name: "Stats", value: `Tracking ${format(await db.getGlobalProvider().getEntryCount(setting))} members totalling ${format(totalData.points)} points with ${format(totalData.wins)} wins`},
-					{name: "Commands", value: `Use </help:1059128936421920870> to see all commands`},
-					{name: "Uptime", value: formatTime(Math.floor(process.uptime()))}
-				).setFooter({text: "Made with ❤️ by platz1de (sdsd)"}).toJSON()
+					{name: "Commands", value: `Use </help:1129906100985151527> to see all commands`},
+					{name: "Uptime", value: formatTime(Math.floor(process.uptime()))},
+					{name: "Source", value: "https://github.com/territorialHQ/point-system-bot"},
+				).setFooter({text: "Made with ❤️ by the TTHQ Team"}).toJSON()
 		]
 	});
 }
