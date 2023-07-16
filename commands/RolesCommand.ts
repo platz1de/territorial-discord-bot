@@ -21,7 +21,7 @@ async function showRoleEmbed(setting: ServerSetting, interaction: BotInteraction
 	await interaction.reply({
 		embeds: [
 			new EmbedBuilder().setAuthor({name: `Available reward roles`, iconURL: interaction.guild.iconURL() || undefined})
-				.setDescription(roles.map(role => `<@&${role.role_id}> • Reach ${role.count} ${role.type}`).join("\n")
+				.setDescription(roles.length === 0 ? "None" : roles.map(role => `<@&${role.role_id}> • Reach ${role.count} ${role.type}`).join("\n")
 				).setColor(Colors.Blurple).setTimestamp().toJSON()
 		]
 	});
