@@ -22,10 +22,10 @@ export default {
 						remove.push(role.role_id);
 					}
 				}
-				member.roles.remove(remove, "Refreshed roles").catch();
+				member.roles.remove(remove, "Refreshed roles").catch(console.error);
 			}
 		} else {
-			member.roles.add(eligible.map(r => r.role_id), "Refreshed roles").catch();
+			member.roles.add(eligible.map(r => r.role_id), "Refreshed roles").catch(console.error);
 		}
 		await interaction.editReply("Roles refreshed");
 	}
