@@ -105,7 +105,8 @@ class DailyDataBaseProvider {
 					let data: { day: string, points: number, wins: number }[] = [];
 					let date = new Date();
 					date.setHours(0, 0, 0, 0);
-					for (let i = 0; i < duration; i++) {
+					date.setDate(date.getDate() + 1);
+					for (let i = 0; i <= duration; i++) {
 						let day = date.toISOString().split("T")[0];
 						let entry = rows.find((entry) => entry.day === day);
 						data.push(entry || {day: day, points: 0, wins: 0});
