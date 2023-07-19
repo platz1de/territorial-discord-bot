@@ -1,7 +1,7 @@
-import {ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {db, logAction} from "../PointManager";
-import BotInteraction from "../util/BotInteraction";
-import {ServerSetting, setMultiplier} from "../BotSettingProvider";
+import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
+import {Command, db, logAction} from "../PointManager";
+import {BotUserContext} from "../util/BotUserContext";
+import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
 
 export default {
 	slashExclusive: false,
@@ -18,20 +18,20 @@ export default {
 		)
 		.addSubcommand(sub => sub.setName("info").setDescription("Show the current multiplier"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
-		if (!(interaction.member instanceof GuildMember)) throw new Error("Member not found");
+	execute: async (context: BotUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
 		const subcommand = interaction.options.getSubcommand();
 		switch (subcommand) {
 			case "set":
-				if (db.getSettingProvider().getMultiplier(setting) !== null) {
-					await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`A multiplier is already set, clear that one first!`).setTimestamp().setColor(Colors.Red).toJSON()]});
+				if (db.getSettingProvider().getMultiplier(context) !== null) {
+					await context.reply(createErrorEmbed(context.user, "A multiplier is already set, clear that one first!"));
 					return;
 				}
 				let multiplier = interaction.options.getNumber("multiplier", true);
 				let description = interaction.options.getString("description", true);
 				let end = interaction.options.getString("end");
 				if (isNaN(multiplier) || multiplier < 1 || multiplier > 5) {
-					await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Multiplier must be at least 1 and at most 5`).setTimestamp().setColor(Colors.Red).toJSON()]});
+					await context.reply(createErrorEmbed(context.user, "Multiplier must be at least 1 and at most 5"));
 					return;
 				}
 				multiplier = Math.round(multiplier * 100) / 100;
@@ -39,54 +39,52 @@ export default {
 				if (end) {
 					const date = new Date(end + " UTC");
 					if (isNaN(date.getTime())) {
-						await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Invalid date`).setTimestamp().setColor(Colors.Red).toJSON()]});
+						await context.reply(createErrorEmbed(context.user, "Invalid date"));
 						return;
 					}
 					processedEnd = date.getTime();
 				}
-				await db.getSettingProvider().setMultiplier(setting, multiplier, processedEnd, description);
-				logAction(setting, interaction.member, `Multiplier set to ${multiplier}x`, Colors.Yellow);
-				await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Set multiplier to ${multiplier}x with description \`${description}\`${processedEnd ? ` ending at <t:${Math.min(processedEnd / 1000)}>` : ""}`).setTimestamp().setColor(Colors.Green).toJSON()]});
+				await db.getSettingProvider().setMultiplier(context, multiplier, processedEnd, description);
+				logAction(context, `Multiplier set to ${multiplier}x`, Colors.Yellow);
+				await context.reply(createConfirmationEmbed(context.user, `Set multiplier to ${multiplier}x with description \`${description}\`${processedEnd ? ` ending at <t:${Math.min(processedEnd / 1000)}>` : ""}`));
 				break;
 			case "clear":
-				db.getSettingProvider().clearMultiplier(setting);
-				logAction(setting, interaction.member, `Multiplier cleared`, Colors.Red);
-				await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Cleared the multiplier!`).setTimestamp().setColor(Colors.Yellow).toJSON()]});
+				db.getSettingProvider().clearMultiplier(context);
+				logAction(context, `Multiplier cleared`, Colors.Red);
+				await context.reply(createConfirmationEmbed(context.user, `Cleared the multiplier!`));
 				break;
 			case "setend":
-				const currentMultiplier = db.getSettingProvider().getMultiplier(setting);
+				const currentMultiplier = db.getSettingProvider().getMultiplier(context);
 				if (!currentMultiplier) {
-					await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`No multiplier set`).setTimestamp().setColor(Colors.Red).toJSON()]});
+					await context.reply(createErrorEmbed(context.user, `No multiplier set`));
 					return;
 				}
 				const endString = interaction.options.getString("date", true);
 				const date = new Date(endString + " UTC");
 				if (isNaN(date.getTime())) {
-					await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Invalid date`).setTimestamp().setColor(Colors.Red).toJSON()]});
+					await context.reply(createErrorEmbed(context.user, `Invalid date`));
 					return;
 				}
 				currentMultiplier.end = date.getTime();
-				db.getSettingProvider().setMultiplier(setting, currentMultiplier.amount, currentMultiplier.end, currentMultiplier.description);
-				logAction(setting, interaction.member, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
-				await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Set multiplier end date to <t:${Math.min(date.getTime() / 1000)}>`).setTimestamp().setColor(Colors.Green).toJSON()]});
+				db.getSettingProvider().setMultiplier(context, currentMultiplier.end, currentMultiplier.description);
+				logAction(context, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
+				await context.reply(createConfirmationEmbed(context.user, `Set multiplier end date to <t:${Math.min(date.getTime() / 1000)}>`));
 				break;
 			case "info":
-				await sendMultiplierInformation(setting, new BotInteraction(interaction));
+				await sendMultiplierInformation(context);
 		}
 	},
-	executeStringy: async (setting: ServerSetting, message: Message) => {
-		await sendMultiplierInformation(setting, new BotInteraction(message));
-	}
-}
+	executeStringy: sendMultiplierInformation
+} as Command;
 
-async function sendMultiplierInformation(setting: ServerSetting, interaction: BotInteraction) {
-	const multiplier = db.getSettingProvider().getMultiplier(setting);
+async function sendMultiplierInformation(context: BotUserContext) {
+	const multiplier = db.getSettingProvider().getMultiplier(context);
 	if (!multiplier) {
-		await interaction.reply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`No multiplier is currently active`).setTimestamp().setColor(Colors.Blurple).toJSON()]});
+		await context.reply({embeds: [new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(`No multiplier is currently active`).setTimestamp().setColor(Colors.Blurple).toJSON()]});
 		return;
 	}
-	await interaction.reply({
-		embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()})
+	await context.reply({
+		embeds: [new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()})
 			.setFields(
 				{name: `${multiplier.amount}x Multiplier`, value: `${multiplier.description}\n${multiplier.end ? `Ending in <t:${Math.min(multiplier.end / 1000)}:R>` : `No end set yet`}\nHappy grinding 🚀`, inline: true},
 			).setTimestamp().setColor(Colors.Blurple).toJSON()]

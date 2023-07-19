@@ -1,21 +1,20 @@
-import {ChatInputCommandInteraction, Client, Collection, ColorResolvable, EmbedBuilder, Events, GatewayIntentBits, GuildMember, Message, REST, Routes, SlashCommandBuilder, TextChannel} from "discord.js";
+import {Client, Collection, ColorResolvable, EmbedBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, TextChannel} from "discord.js";
 import rewards = require("./util/RewardManager");
 import db = require("./db/DataBaseManager");
-import {getServerContext, ServerSetting} from "./BotSettingProvider";
 import {sendUninitializedError} from "./util/EmbedUtil";
 import {handleDialog, hasDialog, startDialog} from "./util/SetupDisalogUtil";
-import BotInteraction from "./util/BotInteraction";
+import {BotUserContext, getUser} from "./util/BotUserContext";
 
 const config: { token: string } = require("./config.json");
-const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
+export const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
 
-interface Command {
+export interface Command {
 	slashExclusive: boolean,
 	stringyNames: string[],
 	slashData: SlashCommandBuilder | { name: string, toJSON(): any },
 	updateSlashData?: () => void,
-	execute: (setting: ServerSetting, interaction: ChatInputCommandInteraction) => void,
-	executeStringy: (setting: ServerSetting, argument: Message) => void
+	execute: (context: BotUserContext) => Promise<void>,
+	executeStringy: (context: BotUserContext) => Promise<void>
 }
 
 const commandRegistry = new Collection<string, Command>();
@@ -38,62 +37,61 @@ client.once(Events.ClientReady, async () => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
-	if (!interaction.isChatInputCommand() || !interaction.guild) return;
-	let context = getServerContext(interaction.guild.id);
-	if (!context) {
-		try {
-			interaction.reply(sendUninitializedError(interaction.user));
-		} catch (e) {
-			console.error(e);
-		}
-		return;
-	}
-	const command = commandRegistry.get(interaction.commandName);
-
-	if (!command) {
-		console.error(`Command ${interaction.commandName} not found`);
-		return;
-	}
-
+	if (!interaction.isChatInputCommand() || !(interaction.member instanceof GuildMember)) return;
 	try {
-		await interaction.deferReply();
-		await command.execute(context, interaction);
-	} catch (error) {
-		console.error(error);
-		await interaction.editReply({content: "An internal error occurred!"});
+		let context = getUser(interaction.member, interaction)
+		if (!context) {
+			interaction.reply(sendUninitializedError(interaction.user));
+			return;
+		}
+		const command = commandRegistry.get(interaction.commandName);
+
+		if (!command) {
+			console.error(`Command ${interaction.commandName} not found`);
+			return;
+		}
+
+		try {
+			await interaction.deferReply();
+			await command.execute(context);
+		} catch (error) {
+			console.error(error);
+			await interaction.editReply({content: "An internal error occurred!"});
+		}
+	} catch (e) {
+		console.error(e);
 	}
 });
 
 client.on(Events.MessageCreate, async message => {
-	if (message.author.bot || !message.guild || !message.channel) return;
-	let context = getServerContext(message.guild.id);
-	let interaction = new BotInteraction(message);
-	if (!context) {
-		try {
-			if (message.content.startsWith("!setup")) startDialog(interaction);
-			else if (hasDialog(interaction)) handleDialog(interaction, message.content);
-			else if (message.content.startsWith("!")) await interaction.reply(sendUninitializedError(message.author));
-		} catch (e) {
-			console.error(e);
-		}
-		return;
-	}
-	if (message.content.startsWith(`<@${client.user?.id}>`) || message.content.startsWith(`<@!${client.user?.id}>`)) {
-		await interaction.reply({content: `My prefix is \`${context.prefix}\``});
-		return;
-	}
-	if (!message.content.startsWith(context.prefix)) return;
-	const command = stringyCommandRegistry.get(message.content.split(" ")[0].substring(context.prefix.length).toLowerCase());
-
-	if (!command) {
-		return;
-	}
-
+	if (message.author.bot || !(message.member instanceof GuildMember)) return;
 	try {
-		await command.executeStringy(context, message);
-	} catch (error) {
-		console.error(error);
-		await message.reply("An internal error occurred!");
+		let context = getUser(message.member, message);
+		if (!context) {
+			if (message.content.startsWith("!setup")) startDialog(message);
+			else if (hasDialog(message)) handleDialog(message);
+			else if (message.content.startsWith("!")) await message.reply(sendUninitializedError(message.author));
+			return;
+		}
+		if (message.content.startsWith(`<@${client.user?.id}>`) || message.content.startsWith(`<@!${client.user?.id}>`)) {
+			await message.reply({content: `My prefix is \`${context.context.prefix}\``});
+			return;
+		}
+		if (!message.content.startsWith(context.context.prefix)) return;
+		const command = stringyCommandRegistry.get(message.content.split(" ")[0].substring(context.context.prefix.length).toLowerCase());
+
+		if (!command) {
+			return;
+		}
+
+		try {
+			await command.executeStringy(context);
+		} catch (error) {
+			console.error(error);
+			await message.reply("An internal error occurred!");
+		}
+	} catch (e) {
+		console.error(e);
 	}
 });
 
@@ -115,27 +113,16 @@ async function refreshSlashCommands() {
 	for (const command of commandRegistry.values()) {
 		commands.push(command.slashData.toJSON());
 	}
-	const data = await rest.put(Routes.applicationCommands(client.user.id), {body: commands});
+	await rest.put(Routes.applicationCommands(client.user.id), {body: commands});
 	console.log(`Registered ${commands.length} commands`);
 }
 
-function hasModAccess(setting: ServerSetting, member: GuildMember): boolean {
-	for (const role of member.roles.cache.values() || []) {
-		if (setting.mod_roles.includes(role.id)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-function logAction(setting: ServerSetting, member: GuildMember, action: string, color: ColorResolvable, channelLog: boolean = true) {
-	const guild = client.guilds.cache.get(setting.guild_id);
-	if (!guild) return;
-	const channel = guild.channels.cache.get(setting.log_channel_id);
+export function logAction(context: BotUserContext, action: string, color: ColorResolvable) {
+	const channel = context.guild.channels.cache.get(context.context.log_channel_id);
 	if (!(channel instanceof TextChannel)) return;
 	channel.send({
 		embeds: [
-			new EmbedBuilder().setAuthor({name: member.user.tag, iconURL: member.user.displayAvatarURL()})
+			new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()})
 				.setDescription(action).setColor(color).setTimestamp().toJSON()
 		]
 	}).catch(console.error);
@@ -143,4 +130,4 @@ function logAction(setting: ServerSetting, member: GuildMember, action: string, 
 
 client.login(config.token).then(() => console.log("Authenticated to Discord API!"));
 
-export {commandRegistry, db, rewards, logAction, hasModAccess, config, refreshSlashCommands};
+export {db, rewards};

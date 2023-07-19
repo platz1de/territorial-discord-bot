@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import {Snowflake} from "discord.js";
 import {rewards} from "./PointManager";
+import {BotUserContext} from "./util/BotUserContext";
 
 export interface ServerSetting {
 	roles: "all" | "highest",
@@ -48,21 +49,21 @@ export function setServerSetting(setting: ServerSetting) {
 	updateSettings();
 }
 
-export function getMultiplier(setting: ServerSetting): { amount: number, end: number | null, description: string } | null {
-	if (setting.multiplier === null) return null;
-	if (setting.multiplier.end !== null && setting.multiplier.end < Date.now()) {
-		setting.multiplier = null;
+export function getMultiplier(context: BotUserContext): { amount: number, end: number | null, description: string } | null {
+	if (context.context.multiplier === null) return null;
+	if (context.context.multiplier.end !== null && context.context.multiplier.end < Date.now()) {
+		context.context.multiplier = null;
 		updateSettings();
 	}
-	return setting.multiplier;
+	return context.context.multiplier;
 }
 
-export function setMultiplier(setting: ServerSetting, amount: number, end: number | null, description: string) {
-	setting.multiplier = {amount, end, description};
+export function setMultiplier(context: BotUserContext, amount: number, end: number | null, description: string) {
+	context.context.multiplier = {amount, end, description};
 	updateSettings();
 }
 
-export function clearMultiplier(setting: ServerSetting) {
-	setting.multiplier = null;
+export function clearMultiplier(context: BotUserContext) {
+	context.context.multiplier = null;
 	updateSettings();
 }

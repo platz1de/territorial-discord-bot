@@ -1,9 +1,8 @@
-import {ChatInputCommandInteraction, Colors, EmbedBuilder, Guild, GuildMember, Message, SlashCommandBuilder, User} from "discord.js";
-import {config, db, hasModAccess, logAction} from "../PointManager";
+import {ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
+import {Command, db, logAction} from "../PointManager";
 import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil";
-import BotInteraction from "../util/BotInteraction";
 import {RewardAnswer} from "../util/RewardManager";
-import {ServerSetting} from "../BotSettingProvider";
+import {BotUserContext, getRawUser} from "../util/BotUserContext";
 
 export default {
 	slashExclusive: false,
@@ -11,40 +10,47 @@ export default {
 	slashData: new SlashCommandBuilder().setName("removewin").setDescription("Remove win from a member")
 		.addIntegerOption(option => option.setName("points").setDescription("The amount of points to remove").setRequired(true))
 		.addUserOption(option => option.setName("member").setDescription("The member to remove from")),
-	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
-		if (!(interaction.member instanceof GuildMember) || !(interaction.guild instanceof Guild)) throw new Error("Member not found");
-		const user: User = interaction.options.getUser("member") || interaction.user;
-		const member: GuildMember = await interaction.guild.members.fetch(user);
+	execute: async (context: BotUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
+		const user: User = interaction.options.getUser("member") || context.user;
 		const points: number = interaction.options.getInteger("points", true);
-		if (member.id !== interaction.user.id && !hasModAccess(setting, interaction.member)) {
-			await interaction.editReply(createErrorEmbed(interaction.user, "❌ You can't remove points from other members!"));
+		if (user.id !== context.user.id && !context.hasModAccess()) {
+			await context.reply(createErrorEmbed(interaction.user, "❌ You can't remove points from other members!"));
 			return;
 		}
 		const err = await checkPointInput(points, interaction.user);
 		if (err) {
-			await interaction.editReply(err);
+			await context.reply(err);
 			return;
 		}
-		const multiplier = await db.getSettingProvider().getMultiplier(setting);
+		const multiplier = await db.getSettingProvider().getMultiplier(context);
 		let realPoints = points;
 		if (multiplier) {
 			realPoints = Math.ceil(points * multiplier.amount);
 		}
-		const response = await db.removeWin(setting, member, realPoints);
-		if (member.id !== interaction.user.id) {
-			logAction(setting, interaction.member, `Removed win of ${points} points from ${member}`, Colors.Yellow);
+		const response = await getRawUser(context.guild.id, user.id)?.removeWin(realPoints) || [];
+		if (user.id !== context.user.id) {
+			logAction(context, `Removed win of ${points} points from ${user}`, Colors.Yellow);
 		}
-		await showRemoveWinEmbed(new BotInteraction(interaction), points, member, response.reward || [], multiplier);
+		await showRemoveWinEmbed(context, points, user.id, response, multiplier);
 	},
-	executeStringy: async (setting: ServerSetting, message: Message) => {
-		if (!message.member) throw new Error("Member not found");
-		if (!setting.channel_id.includes(message.channel.id)) return;
+	executeStringy: async (context: BotUserContext) => {
+		const message = context.base as Message;
+		if (!context.context.channel_id.includes(message.channel.id)) return;
 		let args = message.content.split(" ");
 		args.shift();
-		const target = message.mentions.members?.first() || message.member;
-		args = args.filter(arg => !arg.startsWith("<@"));
-		if (target.id !== message.author.id && !hasModAccess(setting, message.member)) {
-			await message.reply(createErrorEmbed(message.author, "❌ You can't remove points from other members!"));
+		let target: Snowflake = context.id;
+		if (args[0]?.startsWith("<@")) {
+			target = args[0].replace(/<@!?|>/, "");
+			args.shift();
+		} else if (args[1]?.startsWith("<@!")) {
+			target = args[1].replace(/<@!?|>/, "");
+		} else if (!isNaN(parseInt(args[0])) && !isNaN(parseInt(args[1]))) {
+			target = args[0];
+			args.shift();
+		}
+		if (target !== context.user.id && !context.hasModAccess()) {
+			await context.reply(createErrorEmbed(context.user, "❌ You can't remove points from other members!"));
 			return;
 		}
 		const pointData = args.join(" ").replaceAll("*", "x").replaceAll("×", "x").split("x").map(s => s.trim());
@@ -55,28 +61,28 @@ export default {
 				points *= factor;
 			} else points = NaN;
 		}
-		const err = await checkPointInput(points, message.author);
+		const err = await checkPointInput(points, context.user);
 		if (err) {
-			await message.reply(err);
+			await context.reply(err);
 			return;
 		}
-		const multiplier = await db.getSettingProvider().getMultiplier(setting);
+		const multiplier = await db.getSettingProvider().getMultiplier(context);
 		let realPoints = points;
 		if (multiplier) {
 			realPoints = Math.ceil(points * multiplier.amount);
 		}
-		const response = await db.removeWin(setting, target, realPoints);
-		if (target.id !== message.author.id) {
-			logAction(setting, message.member, `Removed win of ${points} points from ${target.id}`, Colors.Yellow);
+		const response = await getRawUser(context.guild.id, target)?.removeWin(realPoints) || [];
+		if (target !== context.user.id) {
+			logAction(context, `Removed win of ${points} points from <@${target}>`, Colors.Yellow);
 		}
-		await showRemoveWinEmbed(new BotInteraction(message), points, target, response.reward || [], multiplier);
+		await showRemoveWinEmbed(context, points, target, response, multiplier);
 	}
-}
+} as Command;
 
-async function showRemoveWinEmbed(interaction: BotInteraction, points: number, member: GuildMember, rewards: RewardAnswer[], multiplier?: { amount: number }) {
-	await interaction.reply({
+async function showRemoveWinEmbed(context: BotUserContext, points: number, target: Snowflake, rewards: RewardAnswer[], multiplier?: { amount: number }) {
+	await context.reply({
 		embeds: [
-			new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Removed win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points from ${interaction.user.id === member.id ? "your" : `${member}'s`} balance` + toRewardString(rewards, interaction.user.id === member.id, false)).setTimestamp().setColor(interaction.user.id === member.id ? Colors.Red : Colors.Yellow).toJSON()
+			new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(`Removed win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points from ${context.user.id === target ? "your" : `<@${target}>'s`} balance` + toRewardString(rewards, context.user.id === target, false)).setTimestamp().setColor(context.user.id === target ? Colors.Red : Colors.Yellow).toJSON()
 		]
 	});
 }

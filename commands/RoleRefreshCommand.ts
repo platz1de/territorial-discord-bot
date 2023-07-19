@@ -1,19 +1,24 @@
-import {ChatInputCommandInteraction, GuildMember, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {rewards} from "../PointManager";
+import {ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
+import {Command, rewards} from "../PointManager";
 import {Reward} from "../util/RewardManager";
-import {ServerSetting} from "../BotSettingProvider";
+import {BotUserContext, getRawUser} from "../util/BotUserContext";
 
 export default {
 	slashExclusive: true,
-	stringyNames: [],
 	slashData: new SlashCommandBuilder().setName("rolerefresh").setDescription("Refresh the role rewards")
 		.addUserOption(option => option.setName("member").setDescription("The member to refresh roles from").setRequired(true))
 		.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
-	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
-		const member = interaction.options.getMember("member");
-		if (!(member instanceof GuildMember)) return;
-		const eligible: Reward[] = await rewards.calculateEligibleRoles(setting, member);
-		if (setting.roles === "highest") {
+	execute: async (context: BotUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
+		const user = interaction.options.getUser("member", true);
+		const member = await context.guild.members.fetch(user.id);
+		const newContext = getRawUser(context.guild.id, user.id);
+		if (!newContext || !member) {
+			await interaction.editReply("Invalid member");
+			return;
+		}
+		const eligible: Reward[] = await rewards.calculateEligibleRoles(context);
+		if (context.context.roles === "highest") {
 			const filtered = rewards.filterByHierarchy(eligible);
 			if (filtered.length > 0) {
 				const remove = [];
@@ -23,10 +28,11 @@ export default {
 					}
 				}
 				member.roles.remove(remove, "Refreshed roles").catch(console.error);
+				member.roles.add(filtered.map(r => r.role_id), "Refreshed roles").catch(console.error);
 			}
 		} else {
 			member.roles.add(eligible.map(r => r.role_id), "Refreshed roles").catch(console.error);
 		}
-		await interaction.editReply("Roles refreshed");
+		await context.reply("Roles refreshed");
 	}
-}
+} as Command;

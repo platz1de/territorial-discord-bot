@@ -1,25 +1,20 @@
-import {ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
-import {config} from "../PointManager";
-import BotInteraction from "../util/BotInteraction";
-import {ServerSetting} from "../BotSettingProvider";
+import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
+import {Command, client} from "../PointManager";
+import {BotUserContext} from "../util/BotUserContext";
 
 export default {
 	slashExclusive: false,
 	stringyNames: ["help", "commands", "cmds", "cmd", "command"],
 	slashData: new SlashCommandBuilder().setName("help").setDescription("See a command list"),
-	execute: async (setting: ServerSetting, interaction: ChatInputCommandInteraction) => {
-		await showHelpEmbed(setting, new BotInteraction(interaction));
-	},
-	executeStringy: async (setting: ServerSetting, message: Message) => {
-		await showHelpEmbed(setting, new BotInteraction(message));
-	}
-}
+	execute: showHelpEmbed,
+	executeStringy: showHelpEmbed
+} as Command;
 
-async function showHelpEmbed(setting: ServerSetting, interaction: BotInteraction) {
-	const prefix = setting.prefix;
-	await interaction.reply({
+async function showHelpEmbed(context: BotUserContext) {
+	const prefix = context.context.prefix;
+	await context.reply({
 		embeds: [
-			new EmbedBuilder().setAuthor({name: interaction.client.user?.tag ?? "Unknown", iconURL: interaction.client.user?.displayAvatarURL()})
+			new EmbedBuilder().setAuthor({name: client.user?.tag ?? "Unknown", iconURL: client.user?.displayAvatarURL()})
 				.setFields(
 					{
 						name: "General", value: `
