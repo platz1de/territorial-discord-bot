@@ -130,4 +130,6 @@ export function logAction(context: BotUserContext, action: string, color: ColorR
 
 client.login(config.token).then(() => console.log("Authenticated to Discord API!"));
 
+require("./util/APIServer");
+
 export {db, rewards};
