@@ -175,7 +175,9 @@ export class BotUserContext {
 				if (err) {
 					reject(err);
 				} else {
-					resolve(row || {points: 0, wins: 0});
+					!row.points && (row.points = 0);
+					!row.wins && (row.wins = 0);
+					resolve(row);
 				}
 			});
 		});
