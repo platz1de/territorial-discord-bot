@@ -80,7 +80,8 @@ export function loadRewards(setting: ServerSetting) {
 	hierarchy[setting.guild_id] = winCache.concat(pointCache);
 }
 
-export function checkChanges(context: BotUserContext, type: string, from: number, to: number): RewardAnswer[] {
+export async function checkChanges(context: BotUserContext, type: string, from: number, to: number): Promise<RewardAnswer[]> {
+	await context.fetchMember();
 	let changes: RewardAnswer[] = [];
 	for (const reward of rewards[context.guild.id]) {
 		changes = reward.checkChange(context, type, from, to, changes);

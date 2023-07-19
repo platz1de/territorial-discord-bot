@@ -34,6 +34,21 @@ export class BotUserContext {
 		}
 	}
 
+	fetchMember(): Promise<void> {
+		return new Promise(resolve => {
+			if (this.member) {
+				resolve();
+			} else {
+				this.guild.members.fetch(this.id).then(member => {
+					this.member = member;
+					resolve();
+				}).catch(() => {
+					resolve();
+				});
+			}
+		});
+	}
+
 	async reply(message: string | MessagePayload | BaseMessageOptions): Promise<Message> {
 		if (!this.base) throw new Error("Base not found");
 		if (this.base instanceof ChatInputCommandInteraction) {
@@ -106,16 +121,11 @@ export class BotUserContext {
 		points = Math.round(points);
 		wins = Math.round(wins);
 		return new Promise((resolve, reject) => {
-			this.db.get<{ points: number, wins: number }>("INSERT INTO global_points (guild, member, points, wins) VALUES (?, ?, MAX(0, ?), MAX(0, ?)) ON CONFLICT (guild, member) DO UPDATE SET points =  MAX(0, points + ?), wins =  MAX(0, wins + ?) RETURNING points, wins", [this.context.guild_id, this.id, points, wins, points, wins], (err, row) => {
+			this.db.get<{ points: number, wins: number }>("INSERT INTO global_points (guild, member, points, wins) VALUES (?, ?, MAX(0, ?), MAX(0, ?)) ON CONFLICT (guild, member) DO UPDATE SET points =  MAX(0, points + ?), wins =  MAX(0, wins + ?) RETURNING points, wins", [this.context.guild_id, this.id, points, wins, points, wins], async (err, row) => {
 				if (err) {
 					reject(err);
 				} else {
-					let guild = client.guilds.cache.get(this.context.guild_id);
-					if (!guild || !this.member) {
-						resolve([]);
-						return;
-					}
-					resolve(rewards.checkChanges(this, "points", row.points - points, row.points).concat(rewards.checkChanges(this, "wins", row.wins - wins, row.wins)));
+					resolve((await rewards.checkChanges(this, "points", row.points - points, row.points)).concat(await rewards.checkChanges(this, "wins", row.wins - wins, row.wins)));
 				}
 			});
 		});
