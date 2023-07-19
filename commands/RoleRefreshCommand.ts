@@ -21,14 +21,14 @@ export default {
 		if (context.context.roles === "highest") {
 			const filtered = rewards.filterByHierarchy(eligible);
 			if (filtered.length > 0) {
-				const remove = [];
-				for (const role of eligible) {
-					if (!filtered.includes(role)) {
-						remove.push(role.role_id);
+				const eligibleRoles = eligible.map(r => r.role_id);
+				let newRoles = filtered.map(r => r.role_id);
+				for (const role of member.roles.cache.values()) {
+					if (!newRoles.includes(role.id) && !eligibleRoles.includes(role.id)) {
+						newRoles.push(role.id);
 					}
 				}
-				member.roles.remove(remove, "Refreshed roles").catch(console.error);
-				member.roles.add(filtered.map(r => r.role_id), "Refreshed roles").catch(console.error);
+				member.roles.set(newRoles, "Refreshed roles").catch(console.error);
 			}
 		} else {
 			member.roles.add(eligible.map(r => r.role_id), "Refreshed roles").catch(console.error);
