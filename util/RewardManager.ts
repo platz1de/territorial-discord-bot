@@ -96,34 +96,34 @@ export async function checkChanges(context: BotUserContext, type: string, from: 
 
 function applyHierarchy(context: BotUserContext, changes: RewardAnswer[]) {
 	if (changes.length === 0 || !context.member) return;
-	let lowestPoints = -1;
-	let lowestWins = -1;
+	let lowestPoints = Infinity;
+	let lowestWins = Infinity;
 	for (const reward of changes) {
 		const index = hierarchy[context.guild.id].findIndex(r => r === rewards[context.guild.id].findIndex(r => r.role_id === reward.role_id));
 		if (index === -1) {
 			throw new Error("Reward not found in hierarchy");
 		}
-		if (rewards[context.guild.id][index].type === "points" && index < lowestPoints) {
+		if (reward.role_type === "points" && index < lowestPoints) {
 			lowestPoints = index;
-		} else if (rewards[context.guild.id][index].type === "wins" && index < lowestWins) {
+		} else if (reward.role_type === "wins" && index < lowestWins) {
 			lowestWins = index;
 		}
 	}
-	const replacePoints = hierarchy[context.guild.id][lowestPoints - 1] || -1;
-	const replaceWins = hierarchy[context.guild.id][lowestWins - 1] || -1;
+	const replacePoints = hierarchy[context.guild.id][lowestPoints - 1];
+	const replaceWins = hierarchy[context.guild.id][lowestWins - 1];
 	if (changes[0].type === "Added") {
-		if (replacePoints !== -1 && rewards[context.guild.id][replacePoints].type === "points") {
-			context.member.roles.remove(rewards[context.guild.id][replacePoints].role_id, "Meets higher criteria").then().catch(console.error);
+		if (replacePoints !== undefined && rewards[context.guild.id][replacePoints].type === "points") {
+			context.member.roles.remove(rewards[context.guild.id][replacePoints].role_id, "Meets higher criteria").catch(console.error);
 		}
-		if (replaceWins !== -1 && rewards[context.guild.id][replaceWins].type === "wins") {
-			context.member.roles.remove(rewards[context.guild.id][replaceWins].role_id, "Meets higher criteria").then().catch(console.error);
+		if (replaceWins !== undefined && rewards[context.guild.id][replaceWins].type === "wins") {
+			context.member.roles.remove(rewards[context.guild.id][replaceWins].role_id, "Meets higher criteria").catch(console.error);
 		}
 	} else {
-		if (replacePoints !== -1 && rewards[context.guild.id][lowestPoints].type === "points") {
-			context.member.roles.add(rewards[context.guild.id][lowestPoints].role_id, "No longer meets higher criteria").then().catch(console.error);
+		if (replacePoints !== undefined && rewards[context.guild.id][replacePoints].type === "points") {
+			context.member.roles.add(rewards[context.guild.id][replacePoints].role_id, "No longer meets higher criteria").catch(console.error);
 		}
-		if (replaceWins !== -1 && rewards[context.guild.id][lowestWins].type === "wins") {
-			context.member.roles.add(rewards[context.guild.id][lowestWins].role_id, "No longer meets higher criteria").then().catch(console.error);
+		if (replaceWins !== undefined && rewards[context.guild.id][replaceWins].type === "wins") {
+			context.member.roles.add(rewards[context.guild.id][replaceWins].role_id, "No longer meets higher criteria").catch(console.error);
 		}
 	}
 }
