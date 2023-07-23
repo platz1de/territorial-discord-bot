@@ -5,7 +5,7 @@ import {sendUninitializedError} from "./util/EmbedUtil";
 import {handleDialog, hasDialog, startDialog} from "./util/SetupDisalogUtil";
 import {BotUserContext, getUser} from "./util/BotUserContext";
 
-const config: { token: string } = require("./config.json");
+export const config: { token: string, unbelieva_bot_token: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
 
 export interface Command {
@@ -33,6 +33,7 @@ client.once(Events.ClientReady, async () => {
 	await registerCommand("HelpCommand");
 	await registerCommand("MultiplierCommand");
 	await registerCommand("RoleRefreshCommand");
+	await registerCommand("ImportCommand");
 	await refreshSlashCommands();
 });
 

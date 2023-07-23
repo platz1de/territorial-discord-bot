@@ -12,14 +12,16 @@ export interface ServerSetting {
 	prefix: string,
 	mod_roles: Snowflake[],
 	rewards: { role_id: string, type: "points" | "wins", count: number }[],
-	multiplier: { amount: number, end: number | null, description: string } | null
+	multiplier: { amount: number, end: number | null, description: string } | null,
+	status: number // first bit: 1 = points imported from 3rd party
 }
 
 const settings: ServerSetting[] = require("./settings.json");
 const indices: { [key: Snowflake]: number } = {};
-export const defaultSetting: ServerSetting = {roles: "all", guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", prefix: "!", mod_roles: [], rewards: [], multiplier: null};
+export const defaultSetting: ServerSetting = {roles: "all", guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", prefix: "!", mod_roles: [], rewards: [], multiplier: null, status: 0};
 
 for (const i in settings) {
+	if (!settings[i].status) settings[i].status = 0;
 	indices[settings[i].guild_id] = parseInt(i);
 	rewards.loadRewards(settings[i]);
 }
