@@ -40,6 +40,7 @@ export class BotUserContext {
 				resolve();
 			} else {
 				this.guild.members.fetch(this.id).then(member => {
+					this.user = member.user;
 					this.member = member;
 					resolve();
 				}).catch(() => {
