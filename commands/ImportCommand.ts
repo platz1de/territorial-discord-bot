@@ -1,7 +1,7 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder, SlashCommandBuilder} from "discord.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
 import {createErrorEmbed} from "../util/EmbedUtil";
-import {Command, config} from "../PointManager";
+import {client, Command, config} from "../PointManager";
 
 export default {
 	slashExclusive: true,
@@ -35,7 +35,7 @@ export default {
 						const data = await res.json();
 						if (!data.permissions || (data.permissions & 0x01) !== 1) {
 							await msg.edit({components: []});
-							await msg.reply(createErrorEmbed(context.user, `❌ You need to authorize the bot to manage points!\nPlease go to https://unbelievaboat.com/applications/authorize?app_id=1132782657202163104&guild_id=${context.guild.id} and authorize the bot, then try again!`));
+							await msg.reply(createErrorEmbed(context.user, `❌ You need to authorize the bot to manage points!\nPlease go to https://unbelievaboat.com/applications/authorize?app_id=${client.user?.id}&guild_id=${context.guild.id} and authorize the bot, then try again!`));
 							return;
 						} else {
 							importUnbelievaBoat(context, msg);
