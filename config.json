@@ -1,4 +1,5 @@
 {
   "token": "<INSERT TOKEN HERE>",
-  "unbelieva_bot_token": "<INSERT TOKEN HERE>"
+  "unbelieva_bot_token": "<INSERT TOKEN HERE>",
+  "endpoint_self": "http://localhost:34583/"
 }
