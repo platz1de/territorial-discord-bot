@@ -1,11 +1,11 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder, SlashCommandBuilder} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
 import {createErrorEmbed} from "../util/EmbedUtil";
 import {client, Command, config} from "../PointManager";
 
 export default {
 	slashExclusive: true,
-	slashData: new SlashCommandBuilder().setName("import").setDescription("Import points from third-party bots"),
+	slashData: new SlashCommandBuilder().setName("import").setDescription("Import points from third-party bots").setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
 	execute: async (context: BotUserContext) => {
 		if ((context.context.status & 0x01) === 1) {
 			await context.reply(createErrorEmbed(context.user, `❌ This server already has points imported! If this process didn't work, please contact the bot support (see \`${context.context.prefix}about\`)`));
