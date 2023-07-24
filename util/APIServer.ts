@@ -1,7 +1,7 @@
 import {createServer} from 'http';
 import {verify} from "jsonwebtoken";
 import {readFileSync} from "fs";
-import {db} from '../PointManager';
+import {client, db} from '../PointManager';
 import {Colors, EmbedBuilder, TextChannel} from "discord.js";
 import {format, toRewardString} from "./EmbedUtil";
 import {getRawUser} from "./BotUserContext";
@@ -56,7 +56,7 @@ createServer(function (r, s) {
 						s.end();
 						return;
 					}
-					if (typeof decoded !== "object" || !decoded.username || !decoded.points || typeof decoded.username !== "string" || typeof decoded.points !== "number" || typeof decoded.clan !== "string") {
+					if (typeof decoded !== "object" || !decoded.points || !decoded.clients || typeof decoded.points !== "number" || typeof decoded.clan !== "string" || !Array.isArray(decoded.clients) || decoded.clients.length === 0) {
 						s.writeHead(400);
 						s.write("Bad request");
 						s.end();
@@ -73,20 +73,20 @@ createServer(function (r, s) {
 					if (multiplier) {
 						realPoints = Math.ceil(realPoints * multiplier.amount);
 					}
-					for (const client of decoded.clients) {
-						const user = getRawUser(targetGuild, client.username);
+					for (const targetClient of decoded.clients) {
+						const user = getRawUser(targetGuild, targetClient.username);
 						if (!user) continue;
 						let channel = client.channels.cache.get(user.context.channel_id[0]);
 						user.registerWin(realPoints).then((response) => {
-							if (channel instanceof TextChannel) {
-								user.fetchMember().then((member) => {
+							user.fetchMember().then((member) => {
+								if (channel && channel instanceof TextChannel) {
 									channel.send({
 										embeds: [
 											new EmbedBuilder().setAuthor({name: user.user.tag + " via TTHQ", iconURL: user.user.displayAvatarURL()}).setDescription(`Registered win of ${format(decoded.points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to <@${user.id}>'s balance` + toRewardString(response, false, false)).setTimestamp().setColor(Colors.Green).setFooter({text: "Action was taken automatically"}).toJSON()
 										]
 									}).catch(() => {});
-								});
-							}
+								}
+							});
 						});
 					}
 					s.writeHead(200);
