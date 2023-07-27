@@ -42,12 +42,11 @@ export function getServerContext(guild: Snowflake): ServerSetting | null {
 }
 
 export function setServerSetting(setting: ServerSetting) {
-	if (indices.hasOwnProperty(setting.guild_id)) {
-		settings[indices[setting.guild_id]] = setting;
-	} else {
-		settings.push(setting);
-		indices[setting.guild_id] = settings.length - 1;
+	if (!indices.hasOwnProperty(setting.guild_id)) {
+		indices[setting.guild_id] = Object.keys(indices).length;
+		console.log(`Added new server ${setting.guild_id} at index ${settings.length}`);
 	}
+	settings[indices[setting.guild_id]] = setting;
 	updateSettings();
 }
 

@@ -109,7 +109,7 @@ export function startDialog(message: Message) {
 		}).catch(() => {});
 		return;
 	}
-	dialogues[message.guild?.id + ":" + message.author.id + ":" + message.channel.id] = {data: defaultSetting, step: 0};
+	dialogues[message.guild?.id + ":" + message.author.id + ":" + message.channel.id] = {data: {...defaultSetting}, step: 0};
 	sendStep(message, undefined);
 }
 
