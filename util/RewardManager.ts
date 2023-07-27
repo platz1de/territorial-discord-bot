@@ -161,7 +161,7 @@ export class Reward {
 		} else if (from >= this.count && to < this.count) {
 			context.member.roles.remove(this.role_id, `Reward for reaching ${this.count} ${this.type} was removed do to no longer meeting the requirement`).then(() => {
 				logAction(context, `Removed role <@&${this.role_id}> for no longer meeting criteria`, Colors.Blurple);
-			});
+			}).catch(console.error);
 			changes.push({type: "Removed", role_type: this.type, role_amount: this.count, role_id: this.role_id});
 		}
 		return changes;
