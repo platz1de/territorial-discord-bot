@@ -14,7 +14,8 @@ export interface Command {
 	slashData: SlashCommandBuilder | { name: string, toJSON(): any },
 	updateSlashData?: () => void,
 	execute: (context: BotUserContext) => Promise<void>,
-	executeStringy: (context: BotUserContext) => Promise<void>
+	executeStringy: (context: BotUserContext) => Promise<void>,
+	extraData?: any
 }
 
 const commandRegistry = new Collection<string, Command>();
@@ -79,6 +80,7 @@ client.on(Events.MessageCreate, async message => {
 			await message.reply({content: `My prefix is \`${context.context.prefix}\``});
 			return;
 		}
+		if (await commandRegistry.get("import")?.extraData?.checkImport(context, message)) return;
 		if (!message.content.startsWith(context.context.prefix)) return;
 		const command = stringyCommandRegistry.get(message.content.split(" ")[0].substring(context.context.prefix.length).toLowerCase());
 
