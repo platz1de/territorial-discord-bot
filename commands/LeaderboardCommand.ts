@@ -27,7 +27,7 @@ export default {
 		const message = context.base as Message;
 		if (message.content.split(" ").length > 1) {
 			if (message.content.split(" ")[1].slice(-1) === "d") {
-				await buildLeaderboardPage(context, 1, false, Math.max(1, Math.min(parseInt(message.content.split(" ")[1].slice(0, -1))), 30));
+				await buildLeaderboardPage(context, 1, false, Math.max(1, Math.min(parseInt(message.content.split(" ")[1].slice(0, -1)), 30)));
 				return;
 			}
 		}
