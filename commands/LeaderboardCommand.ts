@@ -39,7 +39,7 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 	if (isNaN(duration)) duration = 7;
 	const max: number = Math.ceil(await (duration === -1 ? context.getAllTimeEntryCount() : context.getDailyEntryCount(duration)) / 10);
 	page = Math.max(1, Math.min(page, max));
-	const leaderboard = await (duration === -1 ? context.getAllTimeLeaderboard(wins, page) : context.getDailyLeaderboard(wins, page, duration));
+	const leaderboard = await (duration === -1 ? context.getAllTimeLeaderboard(wins, page) : context.getDailyLeaderboard(wins, duration, page));
 	const msg = await context.reply({
 		embeds: [new EmbedBuilder().setColor(Colors.Blurple)
 			.setAuthor({name: `Leaderboard ${duration === -1 ? `of ${context.guild.name}` : `for last ${duration} days`}`, iconURL: context.guild.iconURL() || undefined})
