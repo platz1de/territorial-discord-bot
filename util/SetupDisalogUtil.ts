@@ -11,16 +11,20 @@ const dialogues: { [key: string]: SetupDialog } = {};
 
 const steps = [
 	{
-		question: "What is the prefix for this server?",
-		description: "All commands must later start with this prefix. Example: if you set the prefix to `!`, you can use `!help` to get a list of commands.",
+		question: "What is the prefix for this server? Default: !",
+		description: "All bot commands must later start with this prefix. Example: if you set the prefix to `!`, you can use `!help` to get a list of commands.",
 		validate: (message: Message) => {
 			return message.content.length > 0 && message.content.length < 10;
 		},
 		response: (message: Message) => {
-			return `Set prefix to \`${message.content}\` for command usage like \`${message.content}help\`.`;
+			let prefix = message.content.trim();
+			if (prefix.endsWith("help")) prefix = prefix.substring(0, prefix.length - 4);
+			return `Set prefix to \`${prefix}\` for command usage like \`${prefix}help\`.`;
 		},
 		handle: (setting: ServerSetting, message: Message) => {
-			setting.prefix = message.content;
+			let prefix = message.content.trim();
+			if (prefix.endsWith("help")) prefix = prefix.substring(0, prefix.length - 4);
+			setting.prefix = prefix;
 		}
 	},
 	{
