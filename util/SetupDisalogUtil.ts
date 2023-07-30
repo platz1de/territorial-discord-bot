@@ -1,4 +1,4 @@
-import {defaultSetting, ServerSetting, setServerSetting} from "../BotSettingProvider";
+import {getDefaults, ServerSetting, setServerSetting} from "../BotSettingProvider";
 import {Message, PermissionFlagsBits} from "discord.js";
 import {rewards} from "../PointManager";
 
@@ -109,7 +109,7 @@ export function startDialog(message: Message) {
 		}).catch(() => {});
 		return;
 	}
-	dialogues[message.guild?.id + ":" + message.author.id + ":" + message.channel.id] = {data: {...defaultSetting}, step: 0};
+	dialogues[message.guild?.id + ":" + message.author.id + ":" + message.channel.id] = {data: getDefaults(), step: 0};
 	sendStep(message, undefined);
 }
 
