@@ -40,11 +40,13 @@ export default {
 		let args = message.content.split(" ");
 		args.shift();
 		let target: Snowflake = context.id;
-		if (args[0]?.startsWith("<@")) {
-			target = args[0].replace(/<@!?|>/, "");
+		if (args[0]?.match(/<@!?\d+>/)) {
+			// @ts-ignore
+			target = args[0].match(/<@!?(\d+)>/)[1];
 			args.shift();
-		} else if (args[1]?.startsWith("<@!")) {
-			target = args[1].replace(/<@!?|>/, "");
+		} else if (args[1]?.match(/<@!?\d+>/)) {
+			// @ts-ignore
+			target = args[1].match(/<@!?(\d+)>/)[1];
 		} else if (!isNaN(parseInt(args[0])) && !isNaN(parseInt(args[1]))) {
 			target = args[0];
 			args.shift();
