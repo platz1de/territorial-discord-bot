@@ -32,7 +32,7 @@ export default {
 		await handleSetting(context, index);
 	},
 	executeStringy: async (context: BotUserContext) => {
-		if (!context.member?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+		if (!context.member?.permissions.has(PermissionFlagsBits.Administrator)) {
 			await context.reply("You don't have permission to do that!");
 			return;
 		}
@@ -142,7 +142,7 @@ async function showSettingsEmbed(context: BotUserContext) {
 }
 
 async function handleSetting(context: BotUserContext, index: number) {
-	if (!context.base) return;
+	if (!context.base || !context.member) return;
 	if (index === 0) {
 		const prefix = context.base instanceof ChatInputCommandInteraction ? context.base.options.getString("prefix", true) : context.base.content.split(" ")[1] || "";
 		if (prefix.length >= 10) {
@@ -213,6 +213,10 @@ async function handleSetting(context: BotUserContext, index: number) {
 				const roleId = role.id;
 				if (context.context.rewards.some((r) => r.role_id === roleId)) {
 					await context.reply("That role is already a reward role!");
+					return;
+				}
+				if (context.member.roles.highest.position <= role.position && context.member.id !== context.guild.ownerId) {
+					await context.reply("You can't add a role higher than your highest role!");
 					return;
 				}
 				let type = context.base instanceof ChatInputCommandInteraction ? context.base.options.getInteger("type", true) : context.base.content.split(" ")[2] || "";
