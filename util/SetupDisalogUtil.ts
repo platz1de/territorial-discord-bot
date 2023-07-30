@@ -63,8 +63,8 @@ const steps = [
 		}
 	},
 	{
-		question: "Is your role system incremental or cumulative?",
-		description: "Incremental: Users will only get the highest role they have enough points for. Answer with `inc` or `i`\nCumulative: Users will get all roles they have enough points for. Answer with `all` or `c`",
+		question: "Is your role system cumulative or incremental?",
+		description: "Cumulative: Users will get all roles they have enough points for. Answer with `all` or `c`\nIncremental: Users will only get the highest role they have enough points for. Answer with `inc` or `i`",
 		validate: (message: Message) => {
 			return message.content.toLowerCase() === "inc" || message.content.toLowerCase() === "i" || message.content.toLowerCase() === "all" || message.content.toLowerCase() === "c";
 		},
