@@ -49,6 +49,7 @@ export default {
 async function showProfileEmbed(context: BotUserContext, target: Snowflake, page: number) {
 	const provider = target === context.id ? context : getRawUser(context.guild.id, target);
 	if (!provider) return;
+	await provider.fetchMember();
 	const embed = new EmbedBuilder();
 	let files: AttachmentBuilder[] = [];
 	switch (page) {
