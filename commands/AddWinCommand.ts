@@ -28,7 +28,7 @@ export default {
 		if (multiplier) {
 			realPoints = Math.ceil(points * multiplier.amount);
 		}
-		const response = await context.registerWin(realPoints);
+		const response = await getRawUser(context.guild.id, user.id)?.registerWin(realPoints) || [];
 		if (user.id !== context.user.id) {
 			logAction(context, `Added ${points} points to ${user}`, Colors.Yellow);
 		}
