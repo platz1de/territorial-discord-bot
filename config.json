@@ -1,5 +1,6 @@
 {
   "token": "<INSERT TOKEN HERE>",
+  "unbelieva_app_id": "<INSERT APP ID HERE>",
   "unbelieva_bot_token": "<INSERT TOKEN HERE>",
   "endpoint_self": "http://localhost:34583/"
 }

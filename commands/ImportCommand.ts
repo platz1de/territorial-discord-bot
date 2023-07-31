@@ -1,7 +1,7 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder, Message, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
 import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
-import {client, Command, config} from "../PointManager";
+import {Command, config} from "../PointManager";
 import {setServerSetting} from "../BotSettingProvider";
 
 let importStatus: { [key: string]: { type: string } } = {};
@@ -39,7 +39,7 @@ export default {
 						const data = await res.json();
 						if (!data.permissions || (data.permissions & 0x01) !== 1) {
 							await msg.edit({components: []});
-							await msg.reply(createErrorEmbed(context.user, `❌ You need to authorize the bot to manage points!\nPlease go to https://unbelievaboat.com/applications/authorize?app_id=${client.user?.id}&guild_id=${context.guild.id} and authorize the bot, then try again!`));
+							await msg.reply(createErrorEmbed(context.user, `❌ You need to authorize the bot to manage points!\nPlease go to https://unbelievaboat.com/applications/authorize?app_id=${config.unbelieva_app_id}&guild_id=${context.guild.id} and authorize the bot, then try again!`));
 							return;
 						} else {
 							importUnbelievaBoat(context, msg);
