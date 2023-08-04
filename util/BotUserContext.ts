@@ -246,7 +246,7 @@ export class BotUserContext {
 
 	async getDailyEntryCount(duration: number): Promise<number> {
 		if (isNaN(duration)) duration = 7;
-		duration = Math.min(30, Math.max(1, Math.floor(duration)));
+		duration = Math.min(30, Math.max(0, Math.floor(duration)));
 		return this.simpleCountQuery("SELECT COUNT(*) AS count FROM daily_points WHERE guild = ? AND day >= date('now', ? || ' days')", [this.context.guild_id, -duration]);
 	}
 
@@ -254,7 +254,7 @@ export class BotUserContext {
 		if (isNaN(page)) page = 1;
 		page = Math.max(1, Math.floor(page)) - 1;
 		if (isNaN(duration)) duration = 7;
-		duration = Math.min(30, Math.max(1, Math.floor(duration)));
+		duration = Math.min(30, Math.max(0, Math.floor(duration)));
 		// @formatter:off
 		return this.simpleLeaderboardQuery(`SELECT member, SUM(${wins ? "wins" : "points"}) AS value FROM daily_points WHERE guild = ? AND day >= date('now', ? || ' days') GROUP BY member ORDER BY value DESC LIMIT 10 OFFSET ?`, [this.context.guild_id, -duration, page * 10]);
 		// @formatter:on

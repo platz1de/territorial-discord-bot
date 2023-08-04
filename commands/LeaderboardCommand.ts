@@ -27,7 +27,7 @@ export default {
 		const message = context.base as Message;
 		if (message.content.split(" ").length > 1) {
 			if (message.content.split(" ")[1].slice(-1) === "d") {
-				await buildLeaderboardPage(context, 1, false, Math.max(1, Math.min(parseInt(message.content.split(" ")[1].slice(0, -1)), 30)));
+				await buildLeaderboardPage(context, 1, false, Math.max(0, Math.min(parseInt(message.content.split(" ")[1].slice(0, -1)), 30)));
 				return;
 			}
 		}
@@ -40,10 +40,15 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 	const max: number = Math.ceil(await (duration === -1 ? context.getAllTimeEntryCount() : context.getDailyEntryCount(duration)) / 10);
 	page = Math.max(1, Math.min(page, max));
 	const leaderboard = await (duration === -1 ? context.getAllTimeLeaderboard(wins, page) : context.getDailyLeaderboard(wins, duration, page));
+	let start = new Date(), end = new Date();
+	if (duration !== -1) {
+		start.setUTCHours(0, 0, 0, 0);
+		start.setDate(start.getDate() - duration);
+	}
 	const msg = await context.reply({
 		embeds: [new EmbedBuilder().setColor(Colors.Blurple)
 			.setAuthor({name: `Leaderboard ${duration === -1 ? `of ${context.guild.name}` : `for last ${duration} days`}`, iconURL: context.guild.iconURL() || undefined})
-			.setDescription(`Showing ${wins ? "wins 🏅" : "points 🏆"}\n⠀\n` + leaderboard.map((entry: any, index: number) => `${(page - 1) * 10 + index + 1}. <@${entry.member}> • ${format(entry.value)}`).join("\n"))
+			.setDescription(`${duration !== -1 ? `<t:${Math.floor(start.getTime() / 1000)}:F> - <t:${Math.floor(end.getTime() / 1000)}:F>\n` : ``}Showing ${wins ? "wins 🏅" : "points 🏆"}\n⠀\n` + leaderboard.map((entry: any, index: number) => `${(page - 1) * 10 + index + 1}. <@${entry.member}> • ${format(entry.value)}`).join("\n"))
 			.setFooter({text: `Page ${page}/${max}`}).toJSON()
 		],
 		components: [
