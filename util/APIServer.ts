@@ -62,8 +62,7 @@ createServer(function (r, s) {
 						s.end();
 						return;
 					}
-					//TODO: Workaround for guild ID being an integer, resulting in being rounded
-					if (decoded.clan !== parseInt(targetGuild).toString()) {
+					if (decoded.clan !== targetGuild) {
 						s.writeHead(403);
 						s.write("Forbidden");
 						s.end();
