@@ -5,6 +5,7 @@ import {BotUserContext} from "./util/BotUserContext";
 
 export interface ServerSetting {
 	roles: "all" | "highest",
+	auto_points: boolean,
 	guild_id: string,
 	channel_id: Snowflake[],
 	log_channel_id: string,
@@ -21,12 +22,13 @@ const indices: { [key: Snowflake]: number } = {};
 
 for (const i in settings) {
 	if (!settings[i].status) settings[i].status = 0;
+	if (!settings[i].auto_points) settings[i].auto_points = false;
 	indices[settings[i].guild_id] = parseInt(i);
 	rewards.loadRewards(settings[i]);
 }
 
 export function getDefaults(): ServerSetting {
-	return {roles: "all", guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", prefix: "!", mod_roles: [], rewards: [], multiplier: null, status: 0};
+	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", prefix: "!", mod_roles: [], rewards: [], multiplier: null, status: 0};
 }
 
 function updateSettings() {

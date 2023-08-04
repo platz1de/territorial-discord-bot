@@ -62,7 +62,7 @@ createServer(function (r, s) {
 						s.end();
 						return;
 					}
-					if (decoded.clan !== targetGuild) {
+					if (decoded.clan !== targetGuild || !guildUser.context.auto_points) {
 						s.writeHead(403);
 						s.write("Forbidden");
 						s.end();

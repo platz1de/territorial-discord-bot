@@ -1,9 +1,10 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, Message, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
 import {setServerSetting} from "../BotSettingProvider";
-import {client, rewards} from "../PointManager";
+import {client, config, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
+import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
 
-const settingNames = ["setprefix", "toggleroles", "addchannel", "removechannel", "setlogchannel", "setupdatechannel", "addmodrole", "removemodrole", "addrewardrole", "removerewardrole"];
+const settingNames = ["setprefix", "toggleroles", "toggleautopoints", "addchannel", "removechannel", "setlogchannel", "setupdatechannel", "addmodrole", "removemodrole", "addrewardrole", "removerewardrole"];
 
 export default {
 	slashExclusive: false,
@@ -11,6 +12,7 @@ export default {
 	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings")
 		.addSubcommand(sub => sub.setName("setprefix").setDescription("Change the prefix of the bot").addStringOption(option => option.setName("prefix").setDescription("The new prefix").setRequired(true)))
 		.addSubcommand(sub => sub.setName("toggleroles").setDescription("Toggle the roles menu"))
+		.addSubcommand(sub => sub.setName("toggleautopoints").setDescription("Toggle the auto points system"))
 		.addSubcommand(sub => sub.setName("addchannel").setDescription("Add a channel to the channel whitelist").addChannelOption(option => option.setName("channel").setDescription("The channel to add").setRequired(true)))
 		.addSubcommand(sub => sub.setName("removechannel").setDescription("Remove a channel from the channel whitelist").addChannelOption(option => option.setName("channel").setDescription("The channel to remove").setRequired(true)))
 		.addSubcommand(sub => sub.setName("setlogchannel").setDescription("Set the log channel").addChannelOption(option => option.setName("channel").setDescription("The channel to set").setRequired(true)))
@@ -50,6 +52,26 @@ export default {
 async function showSettingsEmbed(context: BotUserContext) {
 	const prefix = context.context.prefix;
 	let changes = [];
+	if (context.context.auto_points) {
+		await fetch("https://apis.territorial-hq.com/api/Clan/").then(async res => {
+			const data = await res.json();
+			if (data && Array.isArray(data) && data.length > 0) {
+				for (const clan of data) {
+					if (clan.guildId.toString() === context.guild.id) {
+						if (clan.botEndpoint !== config.endpoint_self + context.guild.id + "/") {
+							changes.push("❌ This server has the wrong endpoint set on the TTHQ api!\nUse /endpoint for instructions on how to fix this!");
+							return;
+						}
+						return;
+					}
+				}
+			}
+			changes.push("❌ This server is not registered on the TTHQ api!\nUse /endpoint for instructions on how to fix this!");
+		}).catch(async e => {
+			console.error(e);
+			await context.reply(createErrorEmbed(context.user, "❌ An error occurred while requesting the TTHQ api!"));
+		});
+	}
 	for (const id of context.context.channel_id) {
 		const channel = context.guild.channels.cache.get(id);
 		if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
@@ -115,6 +137,10 @@ async function showSettingsEmbed(context: BotUserContext) {
 				value: `\`${context.context.roles}\` (${context.context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nUse \`${prefix}toggleroles\` to toggle`, inline: true
 			},
 			{
+				name: "♻ Automatic Point Management",
+				value: context.context.auto_points ? "Enabled" : "Disabled" + `\nUse \`${prefix}toggleautopoints\` to toggle`, inline: true
+			},
+			{
 				name: "👑 Win Channels",
 				value: context.context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nUse \`${prefix}removechannel <id>\` or \`${prefix}addchannel <id>\` to manage`, inline: true
 			},
@@ -154,14 +180,21 @@ async function handleSetting(context: BotUserContext, index: number) {
 	} else if (index === 1) {
 		context.context.roles = context.context.roles === "all" ? "highest" : "all";
 		await context.reply(`Set roles to \`${context.context.roles}\``);
-	} else if (index <= 5) {
+	} else if (index === 2) {
+		context.context.auto_points = !context.context.auto_points;
+		if (context.context.auto_points) {
+			await context.reply("Enabled automatic point management!\nMembers will automatically earn points here when playing on a compatible client.\nUse /endpoint to setup the endpoint, which is required for this to function!");
+		} else {
+			await context.reply("Disabled automatic point management!");
+		}
+	} else if (index <= 6) {
 		let channel = context.base instanceof ChatInputCommandInteraction ? context.base.options.getChannel("channel", true) : context.guild.channels.cache.get((context.base.content.split(" ")[1] || "").replace(/<#|>/g, "") || "");
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
 			await context.reply("Invalid channel!");
 			return;
 		}
 		switch (index) {
-			case 2:
+			case 3:
 				if (context.context.channel_id.includes(channel.id)) {
 					await context.reply("That channel is already in the whitelist!");
 					return;
@@ -169,7 +202,7 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.channel_id.push(channel.id);
 				await context.reply(`Added <#${channel.id}> to the whitelist!`);
 				break;
-			case 3:
+			case 4:
 				if (!context.context.channel_id.includes(channel.id)) {
 					await context.reply("That channel isn't in the whitelist!");
 					return;
@@ -177,11 +210,11 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.channel_id.splice(context.context.channel_id.indexOf(channel.id), 1);
 				await context.reply(`Removed <#${channel.id}> from the whitelist!`);
 				break;
-			case 4:
+			case 5:
 				context.context.log_channel_id = channel.id;
 				await context.reply(`Set the log channel to <#${channel.id}>!`);
 				break;
-			case 5:
+			case 6:
 				context.context.update_channel_id = channel.id;
 				await context.reply(`Set the update channel to <#${channel.id}>!`);
 				break;
@@ -193,7 +226,7 @@ async function handleSetting(context: BotUserContext, index: number) {
 			return;
 		}
 		switch (index) {
-			case 6:
+			case 7:
 				if (context.context.mod_roles.includes(role.id)) {
 					await context.reply("That role is already in the whitelist!");
 					return;
@@ -201,7 +234,7 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.mod_roles.push(role.id);
 				await context.reply(`Added <@&${role.id}> to the whitelist!`);
 				break;
-			case 7:
+			case 8:
 				if (!context.context.mod_roles.includes(role.id)) {
 					await context.reply("That role isn't in the whitelist!");
 					return;
@@ -209,7 +242,7 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.mod_roles.splice(context.context.mod_roles.indexOf(role.id), 1);
 				await context.reply(`Removed <@&${role.id}> from the whitelist!`);
 				break;
-			case 8:
+			case 9:
 				const roleId = role.id;
 				if (context.context.rewards.some((r) => r.role_id === roleId)) {
 					await context.reply("That role is already a reward role!");
@@ -236,10 +269,10 @@ async function handleSetting(context: BotUserContext, index: number) {
 					type: type,
 					count: amount
 				});
-				await context.reply(`Added <@&${roleId}> as a reward role!`);
+				await context.reply(`Added <@&${roleId}> as a reward role for ${amount} ${type}!`);
 				rewards.loadRewards(context.context);
 				break;
-			case 9:
+			case 10:
 				const roleId2 = role.id;
 				if (!context.context.rewards.some((r) => r.role_id === roleId2)) {
 					await context.reply("That role isn't a reward role!");
