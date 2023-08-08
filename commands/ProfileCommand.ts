@@ -62,7 +62,7 @@ async function showProfileEmbed(context: BotUserContext, target: Snowflake, page
 			);
 			break;
 		case 1:
-			const next: { role: Snowflake, has: number, needs: number }[] = await rewards.getProgress(context);
+			const next: { role: Snowflake, has: number, needs: number }[] = await rewards.getProgress(provider);
 			embed.addFields(
 				next.length > 0 ? {name: "Next Reward", value: next.map(r => `<@&${r.role}>\n[${'🟦'.repeat(Math.floor(r.has / r.needs * 10))}${'⬜'.repeat(10 - Math.floor(r.has / r.needs * 10))}] ${r.has}/${r.needs} (${Math.floor(r.has / r.needs * 100)}%)`).join("\n\n")}
 					: {name: "All done", value: "You already have all the rewards, good job!"}
