@@ -27,8 +27,6 @@ for (const i in settings) {
 	rewards.loadRewards(settings[i]);
 }
 
-const optOut: Snowflake[] = require("./optOut.json");
-
 export function getDefaults(): ServerSetting {
 	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", prefix: "!", mod_roles: [], rewards: [], multiplier: null, status: 0};
 }
@@ -82,31 +80,4 @@ export function setMultiplier(context: BotUserContext, amount: number, end: numb
 export function clearMultiplier(context: BotUserContext) {
 	context.context.multiplier = null;
 	updateSettings();
-}
-
-function updateOptOut() {
-	fs.writeFile("./optOut.json", JSON.stringify(optOut, null, 4), (err) => {
-		if (err) {
-			console.error(err);
-		}
-	});
-}
-
-export function toggleOptOut(user: Snowflake) {
-	if (optOut.includes(user)) {
-		optOut.splice(optOut.indexOf(user), 1);
-	} else {
-		optOut.push(user);
-	}
-}
-
-export function removeOptOut(user: Snowflake) {
-	if (optOut.includes(user)) {
-		optOut.splice(optOut.indexOf(user), 1);
-		updateOptOut();
-	}
-}
-
-export function isOptedOut(user: Snowflake) {
-	return optOut.includes(user);
 }

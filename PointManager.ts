@@ -4,7 +4,7 @@ import db = require("./db/DataBaseManager");
 import {sendUninitializedError} from "./util/EmbedUtil";
 import {handleDialog, hasDialog, startDialog} from "./util/SetupDisalogUtil";
 import {BotUserContext, getUser} from "./util/BotUserContext";
-import {isOptedOut, removeServerSetting} from "./BotSettingProvider";
+import {removeServerSetting} from "./BotSettingProvider";
 
 export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
@@ -38,7 +38,6 @@ client.once(Events.ClientReady, async () => {
 	await registerCommand("ImportCommand");
 	await registerCommand("EndpointCommand");
 	await registerCommand("RemoveDataCommand");
-	await registerCommand("OptOutMessageCommand");
 	await refreshSlashCommands();
 });
 
@@ -70,7 +69,7 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 client.on(Events.MessageCreate, async message => {
-	if (message.author.bot || !(message.member instanceof GuildMember) || isOptedOut(message.author.id)) return;
+	if (message.author.bot || !(message.member instanceof GuildMember)) return;
 	try {
 		let context = getUser(message.member, message);
 		if (!context) {
