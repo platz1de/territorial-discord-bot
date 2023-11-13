@@ -283,6 +283,11 @@ export class BotUserContext {
 			});
 		});
 	}
+
+	async deleteUser() {
+		this.db.run("DELETE FROM global_points WHERE member = ?", [this.id]);
+		this.db.run("DELETE FROM daily_points WHERE member = ?", [this.id]);
+	}
 }
 
 export function getUser(member: GuildMember, base: ChatInputCommandInteraction | Message): BotUserContext | null {

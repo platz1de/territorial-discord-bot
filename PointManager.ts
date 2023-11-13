@@ -6,7 +6,7 @@ import {handleDialog, hasDialog, startDialog} from "./util/SetupDisalogUtil";
 import {BotUserContext, getUser} from "./util/BotUserContext";
 
 export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string } = require("./config.json");
-export const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
+export const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
 
 export interface Command {
 	slashExclusive: boolean,
@@ -36,6 +36,7 @@ client.once(Events.ClientReady, async () => {
 	await registerCommand("RoleRefreshCommand");
 	await registerCommand("ImportCommand");
 	await registerCommand("EndpointCommand");
+	await registerCommand("RemoveDataCommand");
 	await refreshSlashCommands();
 });
 
