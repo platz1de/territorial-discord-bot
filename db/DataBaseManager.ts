@@ -1,4 +1,5 @@
 import * as sqlite3 from "sqlite3";
+import {Snowflake} from "discord.js";
 
 const db = new sqlite3.Database("./ranking.db");
 const settings = require("../BotSettingProvider");
@@ -12,4 +13,9 @@ export function getProvider(): sqlite3.Database {
 
 export function getSettingProvider() {
 	return settings;
+}
+
+export function deleteGuild(id: Snowflake) {
+	db.run("DELETE FROM global_points WHERE guild = ?", id);
+	db.run("DELETE FROM daily_points WHERE guild = ?", id);
 }

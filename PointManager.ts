@@ -4,6 +4,7 @@ import db = require("./db/DataBaseManager");
 import {sendUninitializedError} from "./util/EmbedUtil";
 import {handleDialog, hasDialog, startDialog} from "./util/SetupDisalogUtil";
 import {BotUserContext, getUser} from "./util/BotUserContext";
+import {removeServerSetting} from "./BotSettingProvider";
 
 export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
@@ -98,6 +99,13 @@ client.on(Events.MessageCreate, async message => {
 	} catch (e) {
 		console.error(e);
 	}
+});
+
+client.on(Events.GuildDelete, async guild => {
+	console.log(`Left guild ${guild.name} (${guild.id})`);
+	console.log(`Deleting associated data...`);
+	removeServerSetting(guild.id);
+	db.deleteGuild(guild.id);
 });
 
 async function registerCommand(file: string) {

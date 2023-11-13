@@ -55,6 +55,14 @@ export function setServerSetting(setting: ServerSetting) {
 	updateSettings();
 }
 
+export function removeServerSetting(guild: Snowflake) {
+	if (indices.hasOwnProperty(guild)) {
+		settings.splice(indices[guild], 1);
+		delete indices[guild];
+		updateSettings();
+	}
+}
+
 export function getMultiplier(context: BotUserContext): { amount: number, end: number | null, description: string } | null {
 	if (context.context.multiplier === null) return null;
 	if (context.context.multiplier.end !== null && context.context.multiplier.end < Date.now()) {
