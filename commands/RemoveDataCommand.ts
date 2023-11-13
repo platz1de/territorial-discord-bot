@@ -1,5 +1,5 @@
 import {SlashCommandBuilder} from "discord.js";
-import {Command} from "../PointManager";
+import {Command, db} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
 
 export default {
@@ -17,6 +17,7 @@ export default {
 						if (message?.content.toLowerCase() === "yes") {
 							message?.react("✅");
 							await context.deleteUser();
+							db.getSettingProvider().removeOptOut(context.user.id)
 							await context.reply("✅ Your data has been removed!");
 							console.log(`Removed user ${context.user.tag} (${context.user.id})`);
 						} else {
