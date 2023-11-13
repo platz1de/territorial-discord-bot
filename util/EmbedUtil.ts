@@ -20,6 +20,7 @@ export function toRewardString(rewards: RewardAnswer[], personal: boolean, short
 }
 
 function format(points: number) {
+	if (isNaN(points) || points === null) return "0";
 	return points.toString().replace(/(.)(?=(\d{3})+$)/g, "$1.");
 }
 
