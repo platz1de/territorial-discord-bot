@@ -1,5 +1,5 @@
 import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
-import {client, GenericCommand} from "../PointManager";
+import {client, GenericCommand, getCommandId} from "../PointManager";
 import {format, formatTime} from "../util/EmbedUtil";
 import {BaseUserContext} from "../util/BaseUserContext";
 
@@ -12,7 +12,7 @@ export default {
 				new EmbedBuilder().setAuthor({name: client.user?.tag ?? "Unknown", iconURL: client.user?.displayAvatarURL()})
 					.setFields(
 						{name: "Stats", value: `Tracking ${format(await context.getAllTimeEntryCount())} members totalling ${format(totalData.points)} points with ${format(totalData.wins)} wins`},
-						{name: "Commands", value: `Use </help:1129906100985151527> to see all commands`},
+						{name: "Commands", value: `Use </help:${getCommandId("help")}> to see all commands`},
 						{name: "Uptime", value: formatTime(Math.floor(process.uptime()))},
 						{name: "Source", value: "https://github.com/territorialHQ/point-system-bot"},
 						{name: "TOS", value: "https://platz1de.github.io/TTHQ/ps-tos"},

@@ -1,6 +1,6 @@
 import {getDefaults, ServerSetting, setServerSetting} from "../BotSettingProvider";
 import {ChatInputCommandInteraction, Message, PermissionFlagsBits} from "discord.js";
-import {rewards} from "../PointManager";
+import {getCommandId, rewards} from "../PointManager";
 import {BaseUserContext} from "./BaseUserContext";
 
 interface SetupDialog {
@@ -149,7 +149,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		context.reply({
 			embeds: [{
 				title: "Setup finished",
-				description: `The setup has been finished. Settings can be changed using \`/settings\` at any point.\nIf you want to setup reward roles, you can do it there as well.`,
+				description: `The setup has been finished. Settings can be changed using \`</settings show:${getCommandId("settings")}>\` at any point.\nIf you want to setup reward roles, you can do it there as well.`,
 				color: 0x00ff00
 			}]
 		}).catch(console.error);

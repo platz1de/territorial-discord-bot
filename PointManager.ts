@@ -28,6 +28,7 @@ export interface PointCommand extends Command {
 }
 
 const commandRegistry = new Collection<string, Command>();
+const commandIdTable: { [key: string]: string } = {};
 
 client.once(Events.ClientReady, async () => {
 	await registerCommand("PingCommand");
@@ -120,8 +121,16 @@ async function refreshSlashCommands() {
 	for (const command of commandRegistry.values()) {
 		commands.push(command.slashData.toJSON());
 	}
-	await rest.put(Routes.applicationCommands(client.user.id), {body: commands});
+	let commandTemp = await rest.put(Routes.applicationCommands(client.user.id), {body: commands});
+	// @ts-ignore
+	for (const command of commandTemp) {
+		commandIdTable[command.name] = command.id;
+	}
 	console.log(`Registered ${commands.length} commands`);
+}
+
+export function getCommandId(name: string): string {
+	return commandIdTable[name] || "0";
 }
 
 export function logAction(context: BotUserContext, action: string, color: ColorResolvable) {

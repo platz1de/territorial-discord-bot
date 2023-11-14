@@ -1,5 +1,5 @@
 import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
-import {client, GenericCommand} from "../PointManager";
+import {client, GenericCommand, getCommandId} from "../PointManager";
 import {BaseUserContext} from "../util/BaseUserContext";
 
 export default {
@@ -11,29 +11,29 @@ export default {
 					.setFields(
 						{
 							name: "General", value: `
-**add <points>** - Register a win for yourself
-**remove <points>** - Remove a win (if misadded)
-**profile [@user]** - See your or someone else's profile
-**lb** - See the leaderboard
-**lb 7d** - See the leaderboard for the last 7 days (available 1-30)
-**mult** - See the current multiplier (if any)
-**roles** - See all role rewards
-**help** - See this list
-**shortcommands** - See a list of legacy-style commands (shorter and faster to type)
-**about** - See infos about the bot`
+</addwin:${getCommandId("addwin")}> - Register a win for yourself
+</removewin:${getCommandId("removewin")}> - Remove a win (if misadded)
+</profile:${getCommandId("profile")}> - See your or someone else's profile
+</leaderboard:${getCommandId("leaderboard")}> - See the leaderboard
+</roles:${getCommandId("roles")}> - See all role rewards
+</help:${getCommandId("help")}> - See this list
+</shortcommands:${getCommandId("shortcommands")}> - See a list of legacy-style commands (shorter and faster to type)
+</about:${getCommandId("about")}> - See infos about the bot`
 						},
 						{
 							name: "Moderation", value: `
-</addwin:1129749479453642844> - Register a win for someone else
-</removewin:1129749479453642845> - Remove a win from someone else
-</modifypoints:1129749479453642846> - Modify a user's points or wins`
+</addwin:${getCommandId("addwin")}> - Register a win for someone else
+</removewin:${getCommandId("removewin")}> - Remove a win from someone else
+</modifypoints:${getCommandId("modifypoints")}> - Modify a user's points or wins
+</rolerefresh:${getCommandId("rolerefresh")}> - Recalculate a user's roles`
 						},
 						{
 							name: "Admin", value: `
-</multiplier set:1129749479642365993> - Set the current multiplier
-</multiplier clear:1129749479642365993> - Remove the current multiplier
-</multiplier setend:1129749479642365993> - Set the end date of the current multiplier
-</settings show:1129906100985151524> - Change server settings`
+</multiplier set:${getCommandId("multiplier")}> - Set the current multiplier
+</multiplier clear:${getCommandId("multiplier")}> - Remove the current multiplier
+</multiplier setend:${getCommandId("multiplier")}> - Set the end date of the current multiplier
+</settings show:${getCommandId("settings")}> - Change server settings
+</endpoint:${getCommandId("endpoint")}> - Check TTHQ Endpoint status`
 						}
 					).setTimestamp().toJSON()
 			]

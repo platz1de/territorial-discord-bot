@@ -1,6 +1,6 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
 import {setServerSetting} from "../BotSettingProvider";
-import {client, config, rewards} from "../PointManager";
+import {client, config, getCommandId, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
 
 export default {
@@ -37,7 +37,7 @@ async function showSettingsEmbed(context: BotUserContext) {
 				for (const clan of data) {
 					if (clan.guildId.toString() === context.guild.id) {
 						if (clan.botEndpoint !== config.endpoint_self + context.guild.id + "/") {
-							changes.push("❌ This server has the wrong endpoint set on the TTHQ api!\nUse /endpoint for instructions on how to fix this!");
+							changes.push(`❌ This server has the wrong endpoint set on the TTHQ api!\nUse </endpoint:${getCommandId("endpoint")}> for instructions on how to fix this!`);
 							isCritical = true;
 							return;
 						}
@@ -45,7 +45,7 @@ async function showSettingsEmbed(context: BotUserContext) {
 					}
 				}
 			}
-			changes.push("❌ This server is not registered on the TTHQ api!\nUse /endpoint for instructions on how to fix this!");
+			changes.push(`❌ This server is not registered on the TTHQ api!\nUse </endpoint:${getCommandId("endpoint")}> for instructions on how to fix this!`);
 			isCritical = true;
 		}).catch(async e => {
 			console.error(e);
@@ -110,31 +110,31 @@ async function showSettingsEmbed(context: BotUserContext) {
 		.addFields([
 			{
 				name: "🏷️ Roles",
-				value: `\`${context.context.roles}\` (${context.context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nId \`toggleroles\``, inline: true
+				value: `\`${context.context.roles}\` (${context.context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nEdit: </settings toggleroles:${getCommandId("settings")}>`, inline: true
 			},
 			{
 				name: "♻ Automatic Point Management",
-				value: context.context.auto_points ? "Enabled" : "Disabled" + `\nId \`toggleautopoints\``, inline: true
+				value: context.context.auto_points ? "Enabled" : "Disabled" + `\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`, inline: true
 			},
 			{
 				name: "👑 Win Channels",
-				value: context.context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nId \`removechannel\` & \`addchannel\``, inline: true
+				value: context.context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nEdit </settings removechannel:${getCommandId("settings")}> & </settings addchannel:${getCommandId("settings")}>`, inline: true
 			},
 			{
 				name: "📜 Log Channel",
-				value: `<#${context.context.log_channel_id}>\nId \`setlogchannel <id>\``, inline: true
+				value: `<#${context.context.log_channel_id}>\nEdit: </settings setlogchannel:${getCommandId("settings")}>`, inline: true
 			},
 			{
 				name: "📰 Update Channel",
-				value: `<#${context.context.update_channel_id}>\nId \`setupdatechannel <id>\``, inline: true
+				value: `<#${context.context.update_channel_id}>\nEdit: </settings setupdatechannel:${getCommandId("settings")}>`, inline: true
 			},
 			{
 				name: "🛠 Mod Roles",
-				value: context.context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nId \`removemodrole\` & \`addmodrole\``, inline: true
+				value: context.context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nEdit: </settings removemodrole:${getCommandId("settings")}> & </settings addmodrole:${getCommandId("settings")}>`, inline: true
 			},
 			{
 				name: "🏆 Reward Roles",
-				value: `See all currect reward roles using \`/roles\`\nId \`removerewardrole\` & \`addrewardrole\``, inline: true
+				value: `See all currect reward roles using </roles:${getCommandId("roles")}>\nEdit </settings removerewardrole:${getCommandId("settings")}> & </settings addrewardrole:${getCommandId("settings")}>`, inline: true
 			}
 		])
 		.setColor(Colors.Blurple).setFooter({
@@ -151,7 +151,7 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 	} else if (index === "toggleautopoints") {
 		context.context.auto_points = !context.context.auto_points;
 		if (context.context.auto_points) {
-			await context.reply("Enabled automatic point management!\nMembers will automatically earn points here when playing on a compatible client.\nUse /endpoint to setup the endpoint, which is required for this to function!");
+			await context.reply(`Enabled automatic point management!\nMembers will automatically earn points here when playing on a compatible client.\nUse </endpoint:${getCommandId("endpoint")}> to setup the endpoint, which is required for this to function!`);
 		} else {
 			await context.reply("Disabled automatic point management!");
 		}
