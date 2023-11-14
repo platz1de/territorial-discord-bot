@@ -1,7 +1,7 @@
 import {PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {BotUserContext} from "../util/BotUserContext";
 import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
-import {Command, config} from "../PointManager";
+import {config, PointCommand} from "../PointManager";
 
 export default {
 	slashExclusive: true,
@@ -28,4 +28,4 @@ export default {
 			await context.reply(createErrorEmbed(context.user, "❌ An error occurred while requesting the TTHQ api!"));
 		});
 	}
-} as Command;
+} as PointCommand;

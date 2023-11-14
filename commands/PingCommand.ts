@@ -1,11 +1,10 @@
 import {SlashCommandBuilder} from "discord.js";
-import {BotUserContext} from "../util/BotUserContext";
-import {Command} from "../PointManager";
+import {GenericCommand} from "../PointManager";
+import {BaseUserContext} from "../util/BaseUserContext";
 
 export default {
-	slashExclusive: true,
 	slashData: new SlashCommandBuilder().setName("ping").setDescription("Ping!"),
-	execute: async (context: BotUserContext) => {
+	execute: async (context: BaseUserContext) => {
 		await context.reply("Pong!");
 	}
-} as Command;
+} as GenericCommand;

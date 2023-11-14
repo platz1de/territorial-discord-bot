@@ -1,10 +1,9 @@
 import {ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {Command, rewards} from "../PointManager";
+import {PointCommand, rewards} from "../PointManager";
 import {Reward} from "../util/RewardManager";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
 
 export default {
-	slashExclusive: true,
 	slashData: new SlashCommandBuilder().setName("rolerefresh").setDescription("Refresh the role rewards")
 		.addUserOption(option => option.setName("member").setDescription("The member to refresh roles from").setRequired(true))
 		.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
@@ -35,4 +34,4 @@ export default {
 		}
 		await context.reply("Roles refreshed");
 	}
-} as Command;
+} as PointCommand;

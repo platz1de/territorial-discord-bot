@@ -1,50 +1,19 @@
-import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
-import {Command, rewards} from "../PointManager";
+import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder, Snowflake, User} from "discord.js";
+import {PointCommand, rewards} from "../PointManager";
 import {format} from "../util/EmbedUtil";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
 
 const QuickChart = require("quickchart-js");
 
 export default {
-	slashExclusive: false,
-	stringyNames: ["profile", "p", "bal", "balance", "pb"],
 	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
 		.addUserOption(option => option.setName("member").setDescription("The member to view")),
 	execute: async (context: BotUserContext) => {
 		const interaction = context.base as ChatInputCommandInteraction;
 		const user: User = interaction.options.getUser("member") || interaction.user;
 		await showProfileEmbed(context, user.id, 0);
-	},
-	executeStringy: async (context: BotUserContext) => {
-		const message = context.base as Message;
-		let user = context.id;
-		if (message.content.split(" ").length > 1) {
-			const arg = message.content.split(" ")[1];
-			if (arg.startsWith("<@") && arg.endsWith(">")) {
-				user = arg.replace(/[<@!>]/g, "");
-			} else if (arg.match(/^\d+$/)) {
-				user = arg;
-			} else {
-				const diff = Infinity;
-				for (const member of context.guild.members.cache.values()) {
-					if (member.user.tag.toLowerCase().includes(arg.toLowerCase())) {
-						const newDiff = member.displayName.length - arg.length;
-						if (newDiff < diff) {
-							user = member.id;
-						}
-					}
-					if (member.displayName.toLowerCase().includes(arg.toLowerCase())) {
-						const newDiff = member.displayName.length - arg.length;
-						if (newDiff < diff) {
-							user = member.id;
-						}
-					}
-				}
-			}
-		}
-		await showProfileEmbed(context, user, 0);
 	}
-} as Command;
+} as PointCommand;
 
 async function showProfileEmbed(context: BotUserContext, target: Snowflake, page: number) {
 	const provider = target === context.id ? context : getRawUser(context.guild.id, target);

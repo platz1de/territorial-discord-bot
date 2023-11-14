@@ -5,18 +5,19 @@ import {sendUninitializedError} from "./util/EmbedUtil";
 import {handleDialog, hasDialog, startDialog} from "./util/SetupDisalogUtil";
 import {BotUserContext, getUser} from "./util/BotUserContext";
 import {removeServerSetting} from "./BotSettingProvider";
+import {BaseUserContext} from "./util/BaseUserContext";
 
 export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string } = require("./config.json");
-export const client = new Client({intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
+export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
 
 export interface Command {
-	slashExclusive: boolean,
-	stringyNames: string[],
-	slashData: SlashCommandBuilder | { name: string, toJSON(): any },
-	updateSlashData?: () => void,
-	execute: (context: BotUserContext) => Promise<void>,
-	executeStringy: (context: BotUserContext) => Promise<void>,
-	extraData?: any
+	slashData: SlashCommandBuilder | { name: string, toJSON(): any }
+}
+export interface GenericCommand extends Command {
+	execute: (context: BaseUserContext) => Promise<void>
+}
+export interface PointCommand extends Command {
+	execute: (context: BotUserContext) => Promise<void>
 }
 
 const commandRegistry = new Collection<string, Command>();

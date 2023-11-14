@@ -1,14 +1,9 @@
-import {ChatInputCommandInteraction, Colors, EmbedBuilder, Message, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
+import {ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
 import {setServerSetting} from "../BotSettingProvider";
 import {client, config, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
-import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
-
-const settingNames = ["setprefix", "toggleroles", "toggleautopoints", "addchannel", "removechannel", "setlogchannel", "setupdatechannel", "addmodrole", "removemodrole", "addrewardrole", "removerewardrole"];
 
 export default {
-	slashExclusive: false,
-	stringyNames: ["settings", "setting", "options", "config", "conf", "st", ...settingNames],
 	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings")
 		.addSubcommand(sub => sub.setName("setprefix").setDescription("Change the prefix of the bot").addStringOption(option => option.setName("prefix").setDescription("The new prefix").setRequired(true)))
 		.addSubcommand(sub => sub.setName("toggleroles").setDescription("Toggle the roles menu"))
@@ -26,32 +21,17 @@ export default {
 	execute: async (context: BotUserContext) => {
 		const interaction = context.base as ChatInputCommandInteraction;
 		const sub = interaction.options.getSubcommand();
-		const index = settingNames.indexOf(sub);
-		if (index === -1) {
+		if (sub === "show") {
 			await showSettingsEmbed(context);
 			return;
 		}
-		await handleSetting(context, index);
-	},
-	executeStringy: async (context: BotUserContext) => {
-		if (!context.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-			await context.reply("You don't have permission to do that!");
-			return;
-		}
-		const message = context.base as Message;
-		const settingName = message.content.split(" ")[0].toLowerCase().substring(context.context.prefix.length);
-		const index = settingNames.indexOf(settingName);
-		if (index === -1) {
-			await showSettingsEmbed(context);
-			return;
-		}
-		await handleSetting(context, index);
+		await handleSetting(interaction, context, sub);
 	}
 }
 
 async function showSettingsEmbed(context: BotUserContext) {
 	const prefix = context.context.prefix;
-	let changes = [];
+	let changes = [], isCritical = false;
 	if (context.context.auto_points) {
 		await fetch("https://apis.territorial-hq.com/api/Clan/").then(async res => {
 			const data = await res.json();
@@ -60,6 +40,7 @@ async function showSettingsEmbed(context: BotUserContext) {
 					if (clan.guildId.toString() === context.guild.id) {
 						if (clan.botEndpoint !== config.endpoint_self + context.guild.id + "/") {
 							changes.push("❌ This server has the wrong endpoint set on the TTHQ api!\nUse /endpoint for instructions on how to fix this!");
+							isCritical = true;
 							return;
 						}
 						return;
@@ -67,9 +48,10 @@ async function showSettingsEmbed(context: BotUserContext) {
 				}
 			}
 			changes.push("❌ This server is not registered on the TTHQ api!\nUse /endpoint for instructions on how to fix this!");
+			isCritical = true;
 		}).catch(async e => {
 			console.error(e);
-			await context.reply(createErrorEmbed(context.user, "❌ An error occurred while requesting the TTHQ api!"));
+			changes.push("❌ An error occurred while requesting the TTHQ api!");
 		});
 	}
 	for (const id of context.context.channel_id) {
@@ -123,7 +105,7 @@ async function showSettingsEmbed(context: BotUserContext) {
 	}
 	let embeds = [];
 	if (changes.length > 0) {
-		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(Colors.Yellow).toJSON());
+		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(isCritical ? Colors.Red : Colors.Yellow).toJSON());
 	}
 	embeds.push(new EmbedBuilder().setAuthor({name: context.guild.name, iconURL: context.guild.iconURL() || undefined})
 		.setTitle("Server Settings")
@@ -167,34 +149,34 @@ async function showSettingsEmbed(context: BotUserContext) {
 	context.reply({embeds}).catch(console.error)
 }
 
-async function handleSetting(context: BotUserContext, index: number) {
+async function handleSetting(data: ChatInputCommandInteraction, context: BotUserContext, index: string) {
 	if (!context.base || !context.member) return;
-	if (index === 0) {
-		const prefix = context.base instanceof ChatInputCommandInteraction ? context.base.options.getString("prefix", true) : context.base.content.split(" ")[1] || "";
+	if (index === "setprefix") {
+		const prefix = data.options.getString("prefix", true);
 		if (prefix.length >= 10) {
 			await context.reply("Prefix must be less than 10 characters!");
 			return;
 		}
 		context.context.prefix = prefix;
 		await context.reply(`Set prefix to \`${prefix}\``);
-	} else if (index === 1) {
+	} else if (index === "toggleroles") {
 		context.context.roles = context.context.roles === "all" ? "highest" : "all";
 		await context.reply(`Set roles to \`${context.context.roles}\``);
-	} else if (index === 2) {
+	} else if (index === "toggleautopoints") {
 		context.context.auto_points = !context.context.auto_points;
 		if (context.context.auto_points) {
 			await context.reply("Enabled automatic point management!\nMembers will automatically earn points here when playing on a compatible client.\nUse /endpoint to setup the endpoint, which is required for this to function!");
 		} else {
 			await context.reply("Disabled automatic point management!");
 		}
-	} else if (index <= 6) {
-		let channel = context.base instanceof ChatInputCommandInteraction ? context.base.options.getChannel("channel", true) : context.guild.channels.cache.get((context.base.content.split(" ")[1] || "").replace(/<#|>/g, "") || "");
+	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel"].includes(index)) {
+		let channel = data.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
 			await context.reply("Invalid channel!");
 			return;
 		}
 		switch (index) {
-			case 3:
+			case "addchannel":
 				if (context.context.channel_id.includes(channel.id)) {
 					await context.reply("That channel is already in the whitelist!");
 					return;
@@ -202,7 +184,7 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.channel_id.push(channel.id);
 				await context.reply(`Added <#${channel.id}> to the whitelist!`);
 				break;
-			case 4:
+			case "removechannel":
 				if (!context.context.channel_id.includes(channel.id)) {
 					await context.reply("That channel isn't in the whitelist!");
 					return;
@@ -210,23 +192,23 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.channel_id.splice(context.context.channel_id.indexOf(channel.id), 1);
 				await context.reply(`Removed <#${channel.id}> from the whitelist!`);
 				break;
-			case 5:
+			case "setlogchannel":
 				context.context.log_channel_id = channel.id;
 				await context.reply(`Set the log channel to <#${channel.id}>!`);
 				break;
-			case 6:
+			case "setupdatechannel":
 				context.context.update_channel_id = channel.id;
 				await context.reply(`Set the update channel to <#${channel.id}>!`);
 				break;
 		}
 	} else {
-		let role = context.base instanceof ChatInputCommandInteraction ? context.base.options.getRole("role", true) : context.guild.roles.cache.get((context.base.content.split(" ")[1] || "").replace(/<@&|>/g, "") || "");
+		let role = data.options.getRole("role", true);
 		if (!role) {
 			await context.reply("Invalid role!");
 			return;
 		}
 		switch (index) {
-			case 7:
+			case "addmodrole":
 				if (context.context.mod_roles.includes(role.id)) {
 					await context.reply("That role is already in the whitelist!");
 					return;
@@ -234,7 +216,7 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.mod_roles.push(role.id);
 				await context.reply(`Added <@&${role.id}> to the whitelist!`);
 				break;
-			case 8:
+			case "removemodrole":
 				if (!context.context.mod_roles.includes(role.id)) {
 					await context.reply("That role isn't in the whitelist!");
 					return;
@@ -242,7 +224,7 @@ async function handleSetting(context: BotUserContext, index: number) {
 				context.context.mod_roles.splice(context.context.mod_roles.indexOf(role.id), 1);
 				await context.reply(`Removed <@&${role.id}> from the whitelist!`);
 				break;
-			case 9:
+			case "addrewardrole":
 				const roleId = role.id;
 				if (context.context.rewards.some((r) => r.role_id === roleId)) {
 					await context.reply("That role is already a reward role!");
@@ -252,27 +234,21 @@ async function handleSetting(context: BotUserContext, index: number) {
 					await context.reply("You can't add a role higher than your highest role!");
 					return;
 				}
-				let type = context.base instanceof ChatInputCommandInteraction ? context.base.options.getInteger("type", true) : context.base.content.split(" ")[2] || "";
-				if (type === 0) type = "points";
-				else if (type === 1) type = "wins";
-				if (type !== "points" && type !== "wins") {
-					await context.reply("Invalid type! Must be `points` or `wins`!");
-					return;
-				}
-				const amount = context.base instanceof ChatInputCommandInteraction ? context.base.options.getInteger("amount", true) : parseInt(context.base.content.split(" ")[3] || "");
+				let type = data.options.getInteger("type", true);
+				const amount = data.options.getInteger("amount", true);
 				if (isNaN(amount) || amount < 1) {
 					await context.reply("Invalid amount!");
 					return;
 				}
 				context.context.rewards.push({
 					role_id: roleId,
-					type: type,
+					type: type === 0 ? "points" : "wins",
 					count: amount
 				});
 				await context.reply(`Added <@&${roleId}> as a reward role for ${amount} ${type}!`);
 				rewards.loadRewards(context.context);
 				break;
-			case 10:
+			case "removerewardrole":
 				const roleId2 = role.id;
 				if (!context.context.rewards.some((r) => r.role_id === roleId2)) {
 					await context.reply("That role isn't a reward role!");

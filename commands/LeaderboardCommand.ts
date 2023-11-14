@@ -1,39 +1,19 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
-import {Command} from "../PointManager";
+import {PointCommand} from "../PointManager";
 import {format} from "../util/EmbedUtil";
 import {BotUserContext} from "../util/BotUserContext";
 
 export default {
-	slashExclusive: false,
-	stringyNames: ["leaderboard", "lb", "top"],
-	slashData: {
-		name: "leaderboard",
-		toJSON: function () {
-			return new SlashCommandBuilder().setName("leaderboard").setDescription("Show the leaderboard")
-				.addIntegerOption(option => option.setName("page").setDescription("The page to view"))
-				.addIntegerOption(option => option.setName("type").setDescription("Type of leaderboard").addChoices(
-					{name: "Points", value: 0},
-					{name: "Wins", value: 1}
-				))
-		}
-	},
+	slashData: new SlashCommandBuilder().setName("leaderboard").setDescription("Show the leaderboard")
+		.addIntegerOption(option => option.setName("page").setDescription("The page to view"))
+		.addIntegerOption(option => option.setName("type").setDescription("Type of leaderboard").addChoices({name: "Points", value: 0}, {name: "Wins", value: 1})),
 	execute: async (context: BotUserContext) => {
 		const interaction = context.base as ChatInputCommandInteraction;
 		let page: number = interaction.options.getInteger("page") || 1;
 		const type: number = interaction.options.getInteger("type") || 0;
 		await buildLeaderboardPage(context, page, type === 1, -1);
-	},
-	executeStringy: async (context: BotUserContext) => {
-		const message = context.base as Message;
-		if (message.content.split(" ").length > 1) {
-			if (message.content.split(" ")[1].slice(-1) === "d") {
-				await buildLeaderboardPage(context, 1, false, Math.max(0, Math.min(parseInt(message.content.split(" ")[1].slice(0, -1)), 30)));
-				return;
-			}
-		}
-		await buildLeaderboardPage(context, 1, false, -1);
 	}
-} as Command;
+} as PointCommand;
 
 async function buildLeaderboardPage(context: BotUserContext, page: number, wins: boolean, duration: number) {
 	if (isNaN(duration)) duration = 7;

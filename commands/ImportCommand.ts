@@ -1,11 +1,10 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
 import {createErrorEmbed} from "../util/EmbedUtil";
-import {Command, config} from "../PointManager";
+import {config, PointCommand} from "../PointManager";
 import {setServerSetting} from "../BotSettingProvider";
 
 export default {
-	slashExclusive: true,
 	slashData: new SlashCommandBuilder().setName("import").setDescription("Import points from third-party bots").setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
 		if ((context.context.status & 0x01) === 1) {
@@ -56,7 +55,7 @@ export default {
 			}
 		});
 	}
-} as Command;
+} as PointCommand;
 
 function importUnbelievaBoat(context: BotUserContext, msg: any, page: number = 1) {
 	fetch("https://unbelievaboat.com/api/v1/guilds/" + context.guild.id + "/users/?sort=total&page=" + page, {

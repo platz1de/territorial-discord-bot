@@ -1,30 +1,25 @@
 import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
-import {Command, client} from "../PointManager";
+import {client, GenericCommand} from "../PointManager";
 import {format, formatTime} from "../util/EmbedUtil";
-import {BotUserContext} from "../util/BotUserContext";
+import {BaseUserContext} from "../util/BaseUserContext";
 
 export default {
-	slashExclusive: false,
-	stringyNames: ["about"],
 	slashData: new SlashCommandBuilder().setName("about").setDescription("See infos about the bot"),
-	execute: showAboutEmbed,
-	executeStringy: showAboutEmbed
-} as Command;
-
-async function showAboutEmbed(context: BotUserContext) {
-	const totalData = await context.getTotalData();
-	context.reply({
-		embeds: [
-			new EmbedBuilder().setAuthor({name: client.user?.tag ?? "Unknown", iconURL: client.user?.displayAvatarURL()})
-				.setFields(
-					{name: "Stats", value: `Tracking ${format(await context.getAllTimeEntryCount())} members totalling ${format(totalData.points)} points with ${format(totalData.wins)} wins`},
-					{name: "Commands", value: `Use </help:1129906100985151527> to see all commands`},
-					{name: "Uptime", value: formatTime(Math.floor(process.uptime()))},
-					{name: "Source", value: "https://github.com/territorialHQ/point-system-bot"},
-					{name: "TOS", value: "https://platz1de.github.io/TTHQ/ps-tos"},
-					{name: "Privacy Policy", value: "https://platz1de.github.io/TTHQ/ps-privacy"},
-					{name: "Support", value: "https://discord.gg/TtKJqYwfYe"}
-				).setFooter({text: "Made with ❤️ by the TTHQ Team"}).toJSON()
-		]
-	}).catch(console.error);
-}
+	execute: async (context: BaseUserContext) => {
+		const totalData = await context.getTotalData();
+		context.reply({
+			embeds: [
+				new EmbedBuilder().setAuthor({name: client.user?.tag ?? "Unknown", iconURL: client.user?.displayAvatarURL()})
+					.setFields(
+						{name: "Stats", value: `Tracking ${format(await context.getAllTimeEntryCount())} members totalling ${format(totalData.points)} points with ${format(totalData.wins)} wins`},
+						{name: "Commands", value: `Use </help:1129906100985151527> to see all commands`},
+						{name: "Uptime", value: formatTime(Math.floor(process.uptime()))},
+						{name: "Source", value: "https://github.com/territorialHQ/point-system-bot"},
+						{name: "TOS", value: "https://platz1de.github.io/TTHQ/ps-tos"},
+						{name: "Privacy Policy", value: "https://platz1de.github.io/TTHQ/ps-privacy"},
+						{name: "Support", value: "https://discord.gg/TtKJqYwfYe"}
+					).setFooter({text: "Made with ❤️ by the TTHQ Team"}).toJSON()
+			]
+		}).catch(console.error);
+	}
+} as GenericCommand;

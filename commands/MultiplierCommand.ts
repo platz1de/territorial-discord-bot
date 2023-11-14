@@ -1,11 +1,9 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {Command, db, logAction} from "../PointManager";
+import {Command, db, logAction, PointCommand} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
 import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
 
 export default {
-	slashExclusive: false,
-	stringyNames: ["multiplier", "multi", "m", "mult"],
 	slashData: new SlashCommandBuilder().setName("multiplier").setDescription("Modify the current multiplier")
 		.addSubcommand(sub => sub.setName("set").setDescription("Set a new multiplier")
 			.addNumberOption(option => option.setName("multiplier").setDescription("The new multiplier").setRequired(true))
@@ -73,11 +71,10 @@ export default {
 			case "info":
 				await sendMultiplierInformation(context);
 		}
-	},
-	executeStringy: sendMultiplierInformation
-} as Command;
+	}
+} as PointCommand;
 
-async function sendMultiplierInformation(context: BotUserContext) {
+export async function sendMultiplierInformation(context: BotUserContext) {
 	const multiplier = db.getSettingProvider().getMultiplier(context);
 	if (!multiplier) {
 		await context.reply({embeds: [new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(`No multiplier is currently active`).setTimestamp().setColor(Colors.Blurple).toJSON()]});
