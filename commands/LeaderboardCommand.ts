@@ -75,3 +75,23 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 		}
 	});
 }
+
+export async function tryLeaderboardEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
+	let accept = false;
+	if (message.startsWith("lb ")) {
+		accept = true;
+		message = message.substring(3);
+	}
+	if (message === "lb") {
+		accept = true;
+	}
+	if (message.split(" ").length > 0) {
+		if (message.split(" ")[0].slice(-1) === "d") {
+			await buildLeaderboardPage(context, 1, false, Math.max(0, Math.min(parseInt(message.split(" ")[0].slice(0, -1)), 30)));
+			return true;
+		}
+	}
+	if (!accept) return false;
+	await buildLeaderboardPage(context, 1, false, -1);
+	return true;
+}

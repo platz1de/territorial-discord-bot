@@ -106,3 +106,38 @@ async function showProfileEmbed(context: BotUserContext, target: Snowflake, page
 		}
 	});
 }
+
+export async function tryProfileEntryMessage(context: BotUserContext, message: string) : Promise<boolean> {
+	let user = null;
+	if (message === "p") {
+		await showProfileEmbed(context, context.id, 0);
+		return true;
+	}
+	if (message.split(" ").length > 0) {
+		const arg = message.split(" ")[0];
+		if (arg.startsWith("<@") && arg.endsWith(">")) {
+			user = arg.replace(/[<@!>]/g, "");
+		} else if (arg.match(/^\d+$/)) {
+			user = arg;
+		} else {
+			const diff = Infinity;
+			for (const member of context.guild.members.cache.values()) {
+				if (member.user.tag.toLowerCase().includes(arg.toLowerCase())) {
+					const newDiff = member.displayName.length - arg.length;
+					if (newDiff < diff) {
+						user = member.id;
+					}
+				}
+				if (member.displayName.toLowerCase().includes(arg.toLowerCase())) {
+					const newDiff = member.displayName.length - arg.length;
+					if (newDiff < diff) {
+						user = member.id;
+					}
+				}
+			}
+		}
+	}
+	if (!user) return false;
+	await showProfileEmbed(context, user, 0);
+	return true;
+}

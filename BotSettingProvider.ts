@@ -10,7 +10,6 @@ export interface ServerSetting {
 	channel_id: Snowflake[],
 	log_channel_id: string,
 	update_channel_id: string,
-	prefix: string,
 	mod_roles: Snowflake[],
 	rewards: { role_id: string, type: "points" | "wins", count: number }[],
 	multiplier: { amount: number, end: number | null, description: string } | null,
@@ -28,7 +27,7 @@ for (const i in settings) {
 }
 
 export function getDefaults(): ServerSetting {
-	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", prefix: "!", mod_roles: [], rewards: [], multiplier: null, status: 0};
+	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, status: 0};
 }
 
 function updateSettings() {

@@ -4,7 +4,6 @@ import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
 import {config, PointCommand} from "../PointManager";
 
 export default {
-	slashExclusive: true,
 	slashData: new SlashCommandBuilder().setName("endpoint").setDescription("Setup assistant for the TTHQ endpoint").setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
 		fetch("https://apis.territorial-hq.com/api/Clan/").then(async res => {

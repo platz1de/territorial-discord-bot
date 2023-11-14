@@ -149,7 +149,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		context.reply({
 			embeds: [{
 				title: "Setup finished",
-				description: `The setup has been finished. Settings can be changed using \`${dialogue.data.prefix}settings\` at any point.\nIf you want to setup reward roles, you can do it there as well.`,
+				description: `The setup has been finished. Settings can be changed using \`/settings\` at any point.\nIf you want to setup reward roles, you can do it there as well.`,
 				color: 0x00ff00
 			}]
 		}).catch(console.error);
@@ -167,7 +167,7 @@ function sendStep(context: BaseUserContext, extra?: string) {
 			description: steps[dialogue.step].description,
 			color: 0x00ff00,
 			footer: {
-				text: "Write your answer into this chat - Type \"cancel\" to cancel the setup."
+				text: "Reply with your answer to this message - Type \"cancel\" to cancel the setup."
 			}
 		}]
 	}).catch(console.error);

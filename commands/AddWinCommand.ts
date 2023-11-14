@@ -1,4 +1,4 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
 import {db, logAction, PointCommand} from "../PointManager";
 import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil";
 import {normalizeChanges, RewardAnswer} from "../util/RewardManager";
@@ -113,4 +113,74 @@ async function checkPointInput(points: number, user: User) {
 		return createErrorEmbed(user, "⚠ Please only add as many points as you have gained!");
 	}
 	return false;
+}
+
+export async function tryAddEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
+	if (!context.context.channel_id.includes(context.channel?.id || "0")) return true;
+	let args = message.split(" ");
+	const mentions: string[] = args.filter(arg => arg.match(/<@!?(\d+)>/));
+	let targets: Snowflake[] = [];
+	if (mentions.length === 0) {
+		targets.push(context.id);
+	} else {
+		for (const mention of mentions) {
+			// @ts-ignore
+			const id = mention.match(/<@!?(\d+)>/)[1];
+			const member = await context.guild.members.fetch(id);
+			if (member) targets.push(member.id);
+		}
+	}
+	targets = targets.filter((member, index, self) => self.indexOf(member) === index);
+	if (targets.length === 0) {
+		await context.reply(createErrorEmbed(context.user, "❌ No valid members found!"));
+		return true;
+	}
+	if (targets.length > 1 && !context.hasModAccess()) {
+		await context.reply(createErrorEmbed(context.user, "❌ You can't add points to multiple members!"));
+		return true;
+	}
+	if (targets.length > 20) {
+		await context.reply(createErrorEmbed(context.user, "❌ You can't add points to more than 20 members at once!"));
+		return true;
+	}
+	args = args.filter(arg => !arg.startsWith("<@"));
+	const pointData = args.join(" ").replaceAll("*", "x").replaceAll("×", "x").split("x").map(s => s.trim());
+	let points = parseInt(pointData[0]);
+	for (let i = 1; i < Math.min(3, pointData.length); i++) {
+		const factor = parseInt(pointData[i]);
+		if (factor < 5) {
+			points *= factor;
+		} else points = NaN;
+	}
+	if (isNaN(points) || points <= 0) {
+		return false; //Not the right command probably
+	}
+	const err = await checkPointInput(points, context.user);
+	if (err) {
+		await context.reply(err);
+		return true;
+	}
+	const multiplier = db.getSettingProvider().getMultiplier(context);
+	let realPoints = points;
+	if (multiplier) {
+		realPoints = Math.ceil(points * multiplier.amount);
+	}
+	if (targets.length === 1) {
+		const target = targets[0];
+		if (target !== context.user.id && !context.hasModAccess()) {
+			await context.reply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
+			return true;
+		}
+		if (target !== context.user.id) {
+			logAction(context, `Added ${points} points to <@${target}>`, Colors.Yellow);
+		}
+	} else {
+		logAction(context, `Added ${points} points to ${targets.length} members`, Colors.Yellow);
+	}
+	let rewards: RewardAnswer[][] = [];
+	for (const target of targets) {
+		rewards.push(await getRawUser(context.guild.id, target)?.registerWin(realPoints) || []);
+	}
+	await showAddWinEmbed(context, points, targets, rewards, multiplier);
+	return true;
 }

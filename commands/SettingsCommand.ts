@@ -5,7 +5,6 @@ import {BotUserContext} from "../util/BotUserContext";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings")
-		.addSubcommand(sub => sub.setName("setprefix").setDescription("Change the prefix of the bot").addStringOption(option => option.setName("prefix").setDescription("The new prefix").setRequired(true)))
 		.addSubcommand(sub => sub.setName("toggleroles").setDescription("Toggle the roles menu"))
 		.addSubcommand(sub => sub.setName("toggleautopoints").setDescription("Toggle the auto points system"))
 		.addSubcommand(sub => sub.setName("addchannel").setDescription("Add a channel to the channel whitelist").addChannelOption(option => option.setName("channel").setDescription("The channel to add").setRequired(true)))
@@ -30,7 +29,6 @@ export default {
 }
 
 async function showSettingsEmbed(context: BotUserContext) {
-	const prefix = context.context.prefix;
 	let changes = [], isCritical = false;
 	if (context.context.auto_points) {
 		await fetch("https://apis.territorial-hq.com/api/Clan/").then(async res => {
@@ -111,55 +109,43 @@ async function showSettingsEmbed(context: BotUserContext) {
 		.setTitle("Server Settings")
 		.addFields([
 			{
-				name: "❗ Prefix",
-				value: `\`${prefix}\`\nUse \`${prefix}setprefix <prefix>\` to change`, inline: true
-			},
-			{
 				name: "🏷️ Roles",
-				value: `\`${context.context.roles}\` (${context.context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nUse \`${prefix}toggleroles\` to toggle`, inline: true
+				value: `\`${context.context.roles}\` (${context.context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nId \`toggleroles\``, inline: true
 			},
 			{
 				name: "♻ Automatic Point Management",
-				value: context.context.auto_points ? "Enabled" : "Disabled" + `\nUse \`${prefix}toggleautopoints\` to toggle`, inline: true
+				value: context.context.auto_points ? "Enabled" : "Disabled" + `\nId \`toggleautopoints\``, inline: true
 			},
 			{
 				name: "👑 Win Channels",
-				value: context.context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nUse \`${prefix}removechannel <id>\` or \`${prefix}addchannel <id>\` to manage`, inline: true
+				value: context.context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nId \`removechannel\` & \`addchannel\``, inline: true
 			},
 			{
 				name: "📜 Log Channel",
-				value: `<#${context.context.log_channel_id}>\nUse \`${prefix}setlogchannel <id>\` to change`, inline: true
+				value: `<#${context.context.log_channel_id}>\nId \`setlogchannel <id>\``, inline: true
 			},
 			{
 				name: "📰 Update Channel",
-				value: `<#${context.context.update_channel_id}>\nUse \`${prefix}setupdatechannel <id>\` to change`, inline: true
+				value: `<#${context.context.update_channel_id}>\nId \`setupdatechannel <id>\``, inline: true
 			},
 			{
 				name: "🛠 Mod Roles",
-				value: context.context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nUse \`${prefix}removemodrole <id>\` or \`${prefix}addmodrole <id>\` to manage`, inline: true
+				value: context.context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nId \`removemodrole\` & \`addmodrole\``, inline: true
 			},
 			{
 				name: "🏆 Reward Roles",
-				value: `See all currect reward roles using \`${prefix}roles\`\nUse \`${prefix}removerewardrole <id>\` or \`${prefix}addrewardrole <id> <points|wins> <amount>\` to manage`, inline: true
+				value: `See all currect reward roles using \`/roles\`\nId \`removerewardrole\` & \`addrewardrole\``, inline: true
 			}
 		])
 		.setColor(Colors.Blurple).setFooter({
-			text: "All settings can also be changed using /settings",
+			text: "Change settings using /settings <id>"
 		}).setTimestamp().toJSON());
 	context.reply({embeds}).catch(console.error)
 }
 
 async function handleSetting(data: ChatInputCommandInteraction, context: BotUserContext, index: string) {
 	if (!context.base || !context.member) return;
-	if (index === "setprefix") {
-		const prefix = data.options.getString("prefix", true);
-		if (prefix.length >= 10) {
-			await context.reply("Prefix must be less than 10 characters!");
-			return;
-		}
-		context.context.prefix = prefix;
-		await context.reply(`Set prefix to \`${prefix}\``);
-	} else if (index === "toggleroles") {
+	if (index === "toggleroles") {
 		context.context.roles = context.context.roles === "all" ? "highest" : "all";
 		await context.reply(`Set roles to \`${context.context.roles}\``);
 	} else if (index === "toggleautopoints") {

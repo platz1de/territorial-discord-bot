@@ -5,7 +5,7 @@ import {getServerContext, ServerSetting} from "../BotSettingProvider";
 import {RewardAnswer} from "./RewardManager";
 import {BaseUserContext} from "./BaseUserContext";
 
-export class BotUserContext extends BaseUserContext{
+export class BotUserContext extends BaseUserContext {
 	context: ServerSetting;
 
 	constructor(id: Snowflake, context: ServerSetting, base: Message | ChatInputCommandInteraction | null) {
@@ -235,10 +235,10 @@ export class BotUserContext extends BaseUserContext{
 	}
 }
 
-export function getUser(member: GuildMember, base: ChatInputCommandInteraction | Message): BotUserContext | null {
+export function getUser(member: GuildMember, base: ChatInputCommandInteraction | Message): BotUserContext | BaseUserContext {
 	const context = getServerContext(member.guild.id);
 	if (!context) {
-		return null;
+		return new BaseUserContext(member.id, base, member.guild);
 	}
 	return new BotUserContext(member.id, context, base);
 }

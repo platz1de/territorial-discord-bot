@@ -51,3 +51,52 @@ async function checkPointInput(points: number, user: User) {
 	}
 	return false;
 }
+
+export async function tryRemoveEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
+	if (!context.context.channel_id.includes(context.channel?.id || "0")) return true;
+	let args = message.split(" ");
+	let target: Snowflake = context.id;
+	if (args[0]?.match(/<@!?\d+>/)) {
+		// @ts-ignore
+		target = args[0].match(/<@!?(\d+)>/)[1];
+		args.shift();
+	} else if (args[1]?.match(/<@!?\d+>/)) {
+		// @ts-ignore
+		target = args[1].match(/<@!?(\d+)>/)[1];
+	} else if (!isNaN(parseInt(args[0])) && !isNaN(parseInt(args[1]))) {
+		target = args[0];
+		args.shift();
+	}
+	if (target !== context.user.id && !context.hasModAccess()) {
+		await context.reply(createErrorEmbed(context.user, "❌ You can't remove points from other members!"));
+		return true;
+	}
+	const pointData = args.join(" ").replaceAll("*", "x").replaceAll("×", "x").split("x").map(s => s.trim());
+	let points = parseInt(pointData[0]);
+	for (let i = 1; i < Math.min(4, pointData.length); i++) {
+		const factor = parseInt(pointData[i]);
+		if (factor < 10) {
+			points *= factor;
+		} else points = NaN;
+	}
+	if (isNaN(points) || points >= 0) {
+		return false; //Not the right command probably
+	}
+	points = -points;
+	const err = await checkPointInput(points, context.user);
+	if (err) {
+		await context.reply(err);
+		return true;
+	}
+	const multiplier = await db.getSettingProvider().getMultiplier(context);
+	let realPoints = points;
+	if (multiplier) {
+		realPoints = Math.ceil(points * multiplier.amount);
+	}
+	const response = await getRawUser(context.guild.id, target)?.removeWin(realPoints) || [];
+	if (target !== context.user.id) {
+		logAction(context, `Removed win of ${points} points from <@${target}>`, Colors.Yellow);
+	}
+	await showRemoveWinEmbed(context, points, target, response, multiplier);
+	return true;
+}

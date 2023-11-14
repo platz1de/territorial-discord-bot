@@ -87,3 +87,11 @@ export async function sendMultiplierInformation(context: BotUserContext) {
 			).setTimestamp().setColor(Colors.Blurple).toJSON()]
 	});
 }
+
+export async function tryMultiplierEntryMessage(context: BotUserContext, message: string) : Promise<boolean> {
+	if (["mult", "multi", "multiplier", "boost", "double", "x2"].includes(message)) {
+		await sendMultiplierInformation(context);
+		return true;
+	}
+	return false;
+}

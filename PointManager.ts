@@ -2,26 +2,32 @@ import {Client, Collection, ColorResolvable, EmbedBuilder, Events, GatewayIntent
 import rewards = require("./util/RewardManager");
 import db = require("./db/DataBaseManager");
 import {sendUninitializedError} from "./util/EmbedUtil";
-import {handleDialog, hasDialog, startDialog} from "./util/SetupDisalogUtil";
+import {handleDialog, hasDialog} from "./util/SetupDisalogUtil";
 import {BotUserContext, getUser} from "./util/BotUserContext";
 import {removeServerSetting} from "./BotSettingProvider";
 import {BaseUserContext} from "./util/BaseUserContext";
+import {handleMessage} from "./util/EntryMessageHandler";
 
 export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
 
 export interface Command {
+	requiresUser: boolean,
 	slashData: SlashCommandBuilder | { name: string, toJSON(): any }
+	execute: (context: BaseUserContext) => Promise<void>,
 }
+
 export interface GenericCommand extends Command {
-	execute: (context: BaseUserContext) => Promise<void>
+	requiresUser: false
 }
+
+// @ts-ignore
 export interface PointCommand extends Command {
+	requiresUser: true,
 	execute: (context: BotUserContext) => Promise<void>
 }
 
 const commandRegistry = new Collection<string, Command>();
-const stringyCommandRegistry = new Collection<string, Command>();
 
 client.once(Events.ClientReady, async () => {
 	await registerCommand("PingCommand");
@@ -39,21 +45,24 @@ client.once(Events.ClientReady, async () => {
 	await registerCommand("ImportCommand");
 	await registerCommand("EndpointCommand");
 	await registerCommand("RemoveDataCommand");
+	await registerCommand("SetupCommand");
+	await registerCommand("ShortCommand");
 	await refreshSlashCommands();
 });
 
 client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand() || !(interaction.member instanceof GuildMember)) return;
 	try {
-		let context = getUser(interaction.member, interaction)
-		if (!context) {
-			interaction.reply(sendUninitializedError(interaction.user));
-			return;
-		}
+		const context = getUser(interaction.member, interaction)
 		const command = commandRegistry.get(interaction.commandName);
 
 		if (!command) {
 			console.error(`Command ${interaction.commandName} not found`);
+			return;
+		}
+
+		if (command.requiresUser && !(context instanceof BotUserContext)) {
+			interaction.reply(sendUninitializedError(interaction.user));
 			return;
 		}
 
@@ -71,28 +80,17 @@ client.on(Events.InteractionCreate, async interaction => {
 
 client.on(Events.MessageCreate, async message => {
 	if (message.author.bot || !(message.member instanceof GuildMember)) return;
+	if (message.content === "") return; //Ignore empty messages (missing indent)
 	try {
 		let context = getUser(message.member, message);
-		if (!context) {
-			if (message.content.startsWith("!setup")) startDialog(message);
-			else if (hasDialog(message)) handleDialog(message);
-			else if (message.content.startsWith("!")) await message.reply(sendUninitializedError(message.author));
-			return;
-		}
-		if (message.content.startsWith(`<@${client.user?.id}>`) || message.content.startsWith(`<@!${client.user?.id}>`)) {
-			await message.reply({content: `My prefix is \`${context.context.prefix}\``});
-			return;
-		}
-		if (await commandRegistry.get("import")?.extraData?.checkImport(context, message)) return;
-		if (!message.content.startsWith(context.context.prefix)) return;
-		const command = stringyCommandRegistry.get(message.content.split(" ")[0].substring(context.context.prefix.length).toLowerCase());
-
-		if (!command) {
+		if (!(context instanceof BotUserContext)) {
+			if (hasDialog(message)) handleDialog(context, message.content);
+			else await message.reply(sendUninitializedError(message.author));
 			return;
 		}
 
 		try {
-			await command.executeStringy(context);
+			await handleMessage(context, message.content)
 		} catch (error) {
 			console.error(error);
 			await message.reply("An internal error occurred!");
@@ -112,11 +110,6 @@ client.on(Events.GuildDelete, async guild => {
 async function registerCommand(file: string) {
 	await import(`./commands/${file}.js`).then((command) => {
 		commandRegistry.set(command.default.slashData.name, command.default);
-		if (!command.default.slashExclusive) {
-			for (const name of command.default.stringyNames) {
-				stringyCommandRegistry.set(name, command.default);
-			}
-		}
 	});
 }
 

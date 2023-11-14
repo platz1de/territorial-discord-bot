@@ -19,6 +19,7 @@ export default {
 **mult** - See the current multiplier (if any)
 **roles** - See all role rewards
 **help** - See this list
+**shortcommands** - See a list of legacy-style commands (shorter and faster to type)
 **about** - See infos about the bot`
 						},
 						{

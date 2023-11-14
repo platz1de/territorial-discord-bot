@@ -10,7 +10,7 @@ function createConfirmationEmbed(user: User, message: string) {
 }
 
 export function sendUninitializedError(user: User) {
-	return createErrorEmbed(user, "This server has not been initialized yet! Please use `!setup` to initialize some basic settings.");
+	return createErrorEmbed(user, "This server has not been initialized yet! Please use `/setup` to initialize some basic settings.");
 }
 
 export function toRewardString(rewards: RewardAnswer[], personal: boolean, short: boolean) {
