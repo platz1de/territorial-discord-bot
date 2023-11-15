@@ -8,7 +8,7 @@ import {removeServerSetting} from "./BotSettingProvider";
 import {BaseUserContext} from "./util/BaseUserContext";
 import {handleMessage} from "./util/EntryMessageHandler";
 
-export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string } = require("./config.json");
+export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, wss_secret: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
 
 export interface Command {
@@ -48,6 +48,8 @@ client.once(Events.ClientReady, async () => {
 	await registerCommand("RemoveDataCommand");
 	await registerCommand("SetupCommand");
 	await registerCommand("ShortCommand");
+	await registerCommand("SubscribeFeed");
+	await registerCommand("UnSubscribeFeed");
 	await refreshSlashCommands();
 });
 
@@ -147,5 +149,6 @@ export function logAction(context: BotUserContext, action: string, color: ColorR
 client.login(config.token).then(() => console.log("Authenticated to Discord API!"));
 
 require("./util/APIServer");
+require("./util/WebSocketServer");
 
 export {db, rewards};

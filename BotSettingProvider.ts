@@ -2,6 +2,7 @@ import * as fs from "fs";
 import {Snowflake} from "discord.js";
 import {rewards} from "./PointManager";
 import {BotUserContext} from "./util/BotUserContext";
+import {subscribe} from "./util/GameDataDistributor";
 
 export interface ServerSetting {
 	roles: "all" | "highest",
@@ -13,6 +14,7 @@ export interface ServerSetting {
 	mod_roles: Snowflake[],
 	rewards: { role_id: string, type: "points" | "wins", count: number }[],
 	multiplier: { amount: number, end: number | null, description: string } | null,
+	webhooks: { clan: string, url: string, channel: Snowflake }[],
 	status: number // first bit: 1 = points imported from 3rd party
 }
 
@@ -22,12 +24,16 @@ const indices: { [key: Snowflake]: number } = {};
 for (const i in settings) {
 	if (!settings[i].status) settings[i].status = 0;
 	if (!settings[i].auto_points) settings[i].auto_points = false;
+	if (!settings[i].webhooks) settings[i].webhooks = [];
 	indices[settings[i].guild_id] = parseInt(i);
 	rewards.loadRewards(settings[i]);
+	for (const webhook of settings[i].webhooks) {
+		subscribe(webhook.clan, webhook.url);
+	}
 }
 
 export function getDefaults(): ServerSetting {
-	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, status: 0};
+	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, webhooks: [], status: 0};
 }
 
 function updateSettings() {

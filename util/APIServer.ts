@@ -8,7 +8,7 @@ import {getRawUser} from "./BotUserContext";
 
 const cert = readFileSync("public.key");
 
-createServer(function (r, s) {
+export const server = createServer(function (r, s) {
 	if (r.url?.match(/\/\d+\/\d+/) && r.method === "GET") {
 		const targetGuild = r.url.split("/")[1];
 		const targetUser = r.url.split("/")[2];
