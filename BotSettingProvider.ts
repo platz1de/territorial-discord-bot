@@ -65,6 +65,9 @@ export function removeServerSetting(guild: Snowflake) {
 		settings.splice(indices[guild], 1);
 		delete indices[guild];
 		updateSettings();
+		for (const i in settings) {
+			indices[settings[i].guild_id] = parseInt(i);
+		}
 	}
 }
 
