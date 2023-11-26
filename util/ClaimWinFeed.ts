@@ -40,7 +40,7 @@ function updateMessage(message: Message, isFirst: boolean, user: Snowflake) {
 	}).catch(() => {});
 }
 
-export async function handleInteraction(interaction: Interaction) {
+export async function handleFeedInteraction(interaction: Interaction) {
 	if (!interaction.isButton() || !(interaction.member instanceof GuildMember)) return;
 	if (interaction.customId !== "claim") return;
 	const context = getUser(interaction.member, interaction);

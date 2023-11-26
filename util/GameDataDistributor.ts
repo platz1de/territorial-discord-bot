@@ -60,6 +60,10 @@ export function unsubscribe(clan: string, webhook: string) {
 	}
 }
 
+export function getCacheForClan(clan: string): CacheEntry[] {
+	return cache.filter(entry => entry.clan === clan);
+}
+
 export function clearCache() {
 	cache = cache.filter(entry => entry.timestamp + 300000 > Date.now()); //5 minutes
 }

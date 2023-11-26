@@ -7,7 +7,8 @@ import {BotUserContext, getUser} from "./util/BotUserContext";
 import {removeServerSetting} from "./BotSettingProvider";
 import {BaseUserContext} from "./util/BaseUserContext";
 import {handleMessage} from "./util/EntryMessageHandler";
-import {handleInteraction} from "./util/ClaimWinFeed";
+import {handleFeedInteraction} from "./util/ClaimWinFeed";
+import {handleChannelInteraction} from "./util/ClaimWinChannel";
 
 export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, wss_secret: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
@@ -55,7 +56,8 @@ client.once(Events.ClientReady, async () => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
-	handleInteraction(interaction).catch(console.error);
+	handleFeedInteraction(interaction).catch(console.error);
+	handleChannelInteraction(interaction).catch(console.error);
 	if (!interaction.isChatInputCommand() || !(interaction.member instanceof GuildMember)) return;
 	try {
 		const context = getUser(interaction.member, interaction)

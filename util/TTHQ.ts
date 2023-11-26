@@ -26,6 +26,13 @@ export function getGuildsForClan(clan: string): Snowflake[] {
 	return [];
 }
 
+export function getClanForGuild(guild: Snowflake): string | null {
+	if (guildCache.hasOwnProperty(guild.toString())) {
+		return guildCache[guild.toString()].tag;
+	}
+	return null;
+}
+
 function refreshCache() {
 	if (lastRefresh + 6000 > Date.now()) // 6 seconds
 		return;

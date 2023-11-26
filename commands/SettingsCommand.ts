@@ -3,6 +3,7 @@ import {ServerSetting, setServerSetting} from "../BotSettingProvider";
 import {client, config, getCommandId, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
 import {getEndpointStatus} from "../util/TTHQ";
+import {getOrSendMessage} from "../util/ClaimWinChannel";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings")
@@ -18,6 +19,9 @@ export default {
 		.addSubcommand(sub => sub.setName("removerewardrole").setDescription("Remove a role from the reward roles").addRoleOption(option => option.setName("role").setDescription("The role to remove").setRequired(true)))
 		.addSubcommand(sub => sub.setName("setwinfeed").setDescription("Set the win feed channel").addChannelOption(option => option.setName("channel").setDescription("The channel to set").setRequired(true)))
 		.addSubcommand(sub => sub.setName("removewinfeed").setDescription("Remove the win feed channel"))
+		.addSubcommand(sub => sub.setName("setclaimchannel").setDescription("Set the claim channel").addChannelOption(option => option.setName("channel").setDescription("The channel to set").setRequired(true)))
+		.addSubcommand(sub => sub.setName("removeclaimchannel").setDescription("Remove the claim channel"))
+		.addSubcommand(sub => sub.setName("setclaimchanneldescription").setDescription("Set the claim channel description").addStringOption(option => option.setName("description").setDescription("The description to set").setRequired(true)))
 		.addSubcommand(sub => sub.setName("show").setDescription("Show the current settings"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
@@ -33,7 +37,7 @@ export default {
 
 async function showSettingsEmbed(context: BotUserContext, page: number) {
 	let changes = [], isCritical = false;
-	if (context.context.auto_points) {
+	if (context.context.auto_points || context.context.win_feed || context.context.claim_channel) {
 		let status = getEndpointStatus(context.guild.id, true);
 		if (!status.success) {
 			changes.push(status.message + `\nUse </endpoint:${getCommandId("endpoint")}> for instructions on how to fix this!`);
@@ -152,6 +156,10 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 				{
 					name: "📝 Win Feed",
 					value: (context.win_feed ? `<#${context.win_feed}>` : "Inactive") + `\nPosts a message in this channel when your clan wins a game. Allows members to claim points.\nEdit: </settings setwinfeed:${getCommandId("settings")}> & </settings removewinfeed:${getCommandId("settings")}>`
+				},
+				{
+					name: "📑 Claim Channel",
+					value: (context.claim_channel ? `<#${context.claim_channel}>` : "Inactive") + `\nDescription: ${context.claim_channel_description}\nAllows members to claim points for games they won by selecting a recent game.\nEdit: </settings setclaimchannel:${getCommandId("settings")}> & </settings removeclaimchannel:${getCommandId("settings")}> & </settings setclaimchanneldescription:${getCommandId("settings")}>`
 				}
 			];
 		case 1:
@@ -208,7 +216,15 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 	} else if (index === "removewinfeed") {
 		context.context.win_feed = null;
 		await context.reply("Removed the win feed!");
-	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed"].includes(index)) {
+	} else if (index === "removeclaimchannel") {
+		context.context.claim_channel = null;
+		await context.reply("Removed the claim channel!");
+	} else if (index === "setclaimchanneldescription") {
+		const description = data.options.getString("description", true);
+		context.context.claim_channel_description = description;
+		await context.reply(`Set the claim channel description to ${description}!`);
+		await getOrSendMessage(context.context);
+	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed", "setclaimchannel"].includes(index)) {
 		let channel = data.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
 			await context.reply("Invalid channel!");
@@ -242,6 +258,11 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 			case "setwinfeed":
 				context.context.win_feed = channel.id;
 				await context.reply(`Set the win feed to <#${channel.id}>!`);
+				break;
+			case "setclaimchannel":
+				context.context.claim_channel = channel.id;
+				await context.reply(`Set the claim channel to <#${channel.id}>!`);
+				await getOrSendMessage(context.context);
 				break;
 		}
 	} else {
