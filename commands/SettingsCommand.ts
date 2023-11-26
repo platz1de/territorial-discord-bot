@@ -1,5 +1,5 @@
-import {ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
-import {setServerSetting} from "../BotSettingProvider";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, Snowflake, TextChannel} from "discord.js";
+import {ServerSetting, setServerSetting} from "../BotSettingProvider";
 import {client, config, getCommandId, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
 
@@ -21,14 +21,14 @@ export default {
 		const interaction = context.base as ChatInputCommandInteraction;
 		const sub = interaction.options.getSubcommand();
 		if (sub === "show") {
-			await showSettingsEmbed(context);
+			await showSettingsEmbed(context, 0);
 			return;
 		}
 		await handleSetting(interaction, context, sub);
 	}
 }
 
-async function showSettingsEmbed(context: BotUserContext) {
+async function showSettingsEmbed(context: BotUserContext, page: number) {
 	let changes = [], isCritical = false;
 	if (context.context.auto_points) {
 		await fetch("https://apis.territorial-hq.com/api/Clan/").then(async res => {
@@ -106,41 +106,85 @@ async function showSettingsEmbed(context: BotUserContext) {
 		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(isCritical ? Colors.Red : Colors.Yellow).toJSON());
 	}
 	embeds.push(new EmbedBuilder().setAuthor({name: context.guild.name, iconURL: context.guild.iconURL() || undefined})
-		.setTitle("Server Settings")
-		.addFields([
-			{
-				name: "🏷️ Roles",
-				value: `\`${context.context.roles}\` (${context.context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nEdit: </settings toggleroles:${getCommandId("settings")}>`, inline: true
-			},
-			{
-				name: "♻ Automatic Point Management",
-				value: context.context.auto_points ? "Enabled" : "Disabled" + `\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`, inline: true
-			},
-			{
-				name: "👑 Win Channels",
-				value: context.context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nEdit </settings removechannel:${getCommandId("settings")}> & </settings addchannel:${getCommandId("settings")}>`, inline: true
-			},
-			{
-				name: "📜 Log Channel",
-				value: `<#${context.context.log_channel_id}>\nEdit: </settings setlogchannel:${getCommandId("settings")}>`, inline: true
-			},
-			{
-				name: "📰 Update Channel",
-				value: `<#${context.context.update_channel_id}>\nEdit: </settings setupdatechannel:${getCommandId("settings")}>`, inline: true
-			},
-			{
-				name: "🛠 Mod Roles",
-				value: context.context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nEdit: </settings removemodrole:${getCommandId("settings")}> & </settings addmodrole:${getCommandId("settings")}>`, inline: true
-			},
-			{
-				name: "🏆 Reward Roles",
-				value: `See all currect reward roles using </roles:${getCommandId("roles")}>\nEdit </settings removerewardrole:${getCommandId("settings")}> & </settings addrewardrole:${getCommandId("settings")}>`, inline: true
-			}
-		])
+		.setTitle(["Point Management Settings", "Role Settings", "Channel Settings"][page])
+		.addFields(getSettingsFields(context.context, page))
 		.setColor(Colors.Blurple).setFooter({
-			text: "Change settings using /settings <id>"
+			text: "Use buttons below to navigate"
 		}).setTimestamp().toJSON());
-	context.reply({embeds}).catch(console.error)
+	let msg = await context.reply({
+		embeds,
+		components: [
+			new ActionRowBuilder<ButtonBuilder>().addComponents(
+				new ButtonBuilder().setCustomId("settings:p").setLabel("Points").setStyle(page === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+				new ButtonBuilder().setCustomId("settings:r").setLabel("Roles").setStyle(page === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+				new ButtonBuilder().setCustomId("settings:c").setLabel("Channels").setStyle(page === 2 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+			)
+		]
+	});
+
+	if (!context.channel) return;
+	const collector = context.channel.createMessageComponentCollector({time: 120000});
+	collector.on("collect", async i => {
+		if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== context.user.id) return;
+		await i.deferUpdate();
+		collector.stop();
+		await showSettingsEmbed(context, ["settings:p", "settings:r", "settings:c"].indexOf(i.customId));
+	});
+
+	collector.on("end", async (collected, reason) => {
+		try {
+			reason === "time" && await msg.edit({components: []})
+		} catch (e) {
+		}
+	});
+}
+
+function getSettingsFields(context: ServerSetting, page: number): { name: string, value: string }[] {
+	switch (page) {
+		case 0:
+			return [
+				{
+					name: "♻ Automatic Point Management",
+					value: context.auto_points ? "Enabled" : "Disabled" + `\nAllows to automatically add points when members with them using [BetterTT](https://platz1de.github.io/BetterTT/).\n\nMake sure to follow the setup guide: </endpoint:${getCommandId("endpoint")}>\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`
+				}
+			];
+		case 1:
+			return [
+				{
+					name: "👑 Win Channels",
+					value: context.channel_id.map((id) => `<#${id}>`).join("\n") + `\nWin add commands are only accepted in these channels to keep your server clean.\nEdit </settings removechannel:${getCommandId("settings")}> & </settings addchannel:${getCommandId("settings")}>`
+				},
+				{
+					name: "📜 Log Channel",
+					value: `<#${context.log_channel_id}>\nAll moderation or potentially dangerous actions are logged here.\nEdit: </settings setlogchannel:${getCommandId("settings")}>`
+				},
+				{
+					name: "📰 Update Channel",
+					value: `<#${context.update_channel_id}>\nImportant messages about the bot get posted here. (Only very rarely used)\nEdit: </settings setupdatechannel:${getCommandId("settings")}>`
+				},
+				{
+					name: "📋 Clan Feed",
+					value: `${context.webhooks.length} feeds\nFeeds allow you to get yours or all clan wins posted in a channel.\nEdit: </subscribefeed:${getCommandId("subscribefeed")}> & </unsubscribefeed:${getCommandId("unsubscribefeed")}>`
+				}
+			];
+		case 2:
+			return [
+				{
+					name: "🛠 Mod Roles",
+					value: context.mod_roles.map((id) => `<@&${id}>`).join("\n") + `\nThese roles can use moderation commands and manage points of other members.\nEdit: </settings removemodrole:${getCommandId("settings")}> & </settings addmodrole:${getCommandId("settings")}>`
+				},
+				{
+					name: "🏷️ Roles",
+					value: `\`${context.roles}\` (${context.roles === "all" ? "Keep all roles a member has unlocked" : "Only the highest role a member unlocked"})\nGeneral behaviour of reward roles.\nEdit: </settings toggleroles:${getCommandId("settings")}>`
+				},
+				{
+					name: "🏆 Reward Roles",
+					value: `See all currect reward roles using </roles:${getCommandId("roles")}>\nReward roles are given once certain configurable milestones are reached.\nEdit </settings removerewardrole:${getCommandId("settings")}> & </settings addrewardrole:${getCommandId("settings")}>`
+				}
+			];
+		default:
+			return [];
+	}
 }
 
 async function handleSetting(data: ChatInputCommandInteraction, context: BotUserContext, index: string) {
