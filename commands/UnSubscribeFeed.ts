@@ -1,6 +1,6 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, Snowflake} from "discord.js";
 import {BotUserContext} from "../util/BotUserContext";
-import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
+import {createErrorEmbed} from "../util/EmbedUtil";
 import {setServerSetting} from "../BotSettingProvider";
 import {unsubscribe} from "../util/GameDataDistributor";
 
@@ -36,7 +36,12 @@ export default {
 			context.context.webhooks.splice(context.context.webhooks.indexOf(webhook), 1);
 			unsubscribe(webhook.clan, webhook.url);
 			setServerSetting(context.context);
-			await context.reply(createConfirmationEmbed(context.user, `✅ Successfully unsubscribed from the clan win feed for \`${webhook.clan}\` in <#${webhook.channel}>!`));
+			await msg.edit({
+				embeds: [
+					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(`Successfully unsubscribed from the clan win feed for \`${webhook.clan}\` in <#${webhook.channel}>!`).setTimestamp().toJSON()
+				],
+				components: []
+			});
 		});
 
 		collector.on("end", async (collected, reason) => {
