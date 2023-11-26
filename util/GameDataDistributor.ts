@@ -31,7 +31,7 @@ export function addToCache(data: string) {
 	const msg = `**${match[4]}**    ${match[2]}    ${match[1].length === 2 ? "2 x " : ""}${match[3]}  [${match[5]}.${match[6]}->${match[7]}.${match[8]}]`;
 	sendToSubscribers(match[4], msg);
 	sendToSubscribers("ALL", msg);
-	sendToFeed(match[4], msg, parseInt(match[3])).catch(() => {});
+	sendToFeed(match[4], msg, parseInt(match[3]) * (match[1].length === 2 ? 2 : 1)).catch(() => {});
 }
 
 function sendToSubscribers(clan: string, message: string) {
