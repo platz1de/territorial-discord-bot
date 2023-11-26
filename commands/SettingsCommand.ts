@@ -132,6 +132,12 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 				{
 					name: "♻ Automatic Point Management",
 					value: context.auto_points ? "Enabled" : "Disabled" + `\nAllows to automatically add points when members with them using [BetterTT](https://platz1de.github.io/BetterTT/).\n\nMake sure to follow the setup guide: </endpoint:${getCommandId("endpoint")}>\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`
+					value: (context.auto_points ? "Enabled" : "Disabled") + `\nAllows to automatically add points when members with them using [BetterTT](https://platz1de.github.io/BetterTT/).\n\nMake sure to follow the setup guide: </endpoint:${getCommandId("endpoint")}>\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`
+				},
+				{
+					name: "🔢 Multiplier",
+					value: (context.multiplier ? `\`x ${context.multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>`
+				},
 				}
 			];
 		case 1:
@@ -185,7 +191,10 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 		} else {
 			await context.reply("Disabled automatic point management!");
 		}
-	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel"].includes(index)) {
+	} else if (index === "removewinfeed") {
+		context.context.win_feed = null;
+		await context.reply("Removed the win feed!");
+	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed"].includes(index)) {
 		let channel = data.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
 			await context.reply("Invalid channel!");
@@ -215,6 +224,10 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 			case "setupdatechannel":
 				context.context.update_channel_id = channel.id;
 				await context.reply(`Set the update channel to <#${channel.id}>!`);
+				break;
+			case "setwinfeed":
+				context.context.win_feed = channel.id;
+				await context.reply(`Set the win feed to <#${channel.id}>!`);
 				break;
 		}
 	} else {
