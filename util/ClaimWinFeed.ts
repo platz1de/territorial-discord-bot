@@ -49,7 +49,7 @@ export async function handleInteraction(interaction: Interaction) {
 	if (!message) return;
 	if (!messageCache[message.id]) return;
 	const cache = messageCache[message.id];
-	if (cache.timestamp + 90000 < Date.now()) return;
+	if (cache.timestamp + 300000 < Date.now()) return;
 	if (cache.claimed.includes(interaction.user.id)) {
 		interaction.reply({
 			embeds: [
@@ -78,7 +78,7 @@ export async function handleInteraction(interaction: Interaction) {
 function refresh() {
 	for (const id of Object.keys(messageCache)) {
 		const cache = messageCache[id];
-		if (cache.timestamp + 90000 < Date.now()) {
+		if (cache.timestamp + 300000 < Date.now()) {
 			cache.msg.edit({
 				components: []
 			}).catch(() => {});
@@ -87,4 +87,4 @@ function refresh() {
 	}
 }
 
-setInterval(refresh, 5000);
+setInterval(refresh, 10000);
