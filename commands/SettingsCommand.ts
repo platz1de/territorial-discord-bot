@@ -2,6 +2,7 @@ import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInp
 import {ServerSetting, setServerSetting} from "../BotSettingProvider";
 import {client, config, getCommandId, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
+import {getEndpointStatus} from "../util/TTHQ";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings")
@@ -31,26 +32,11 @@ export default {
 async function showSettingsEmbed(context: BotUserContext, page: number) {
 	let changes = [], isCritical = false;
 	if (context.context.auto_points) {
-		await fetch("https://apis.territorial-hq.com/api/Clan/").then(async res => {
-			const data = await res.json();
-			if (data && Array.isArray(data) && data.length > 0) {
-				for (const clan of data) {
-					if (clan.guildId.toString() === context.guild.id) {
-						if (clan.botEndpoint !== config.endpoint_self + context.guild.id + "/") {
-							changes.push(`❌ This server has the wrong endpoint set on the TTHQ api!\nUse </endpoint:${getCommandId("endpoint")}> for instructions on how to fix this!`);
-							isCritical = true;
-							return;
-						}
-						return;
-					}
-				}
-			}
-			changes.push(`❌ This server is not registered on the TTHQ api!\nUse </endpoint:${getCommandId("endpoint")}> for instructions on how to fix this!`);
+		let status = getEndpointStatus(context.guild.id, true);
+		if (!status.success) {
+			changes.push(status.message + `\nUse </endpoint:${getCommandId("endpoint")}> for instructions on how to fix this!`);
 			isCritical = true;
-		}).catch(async e => {
-			console.error(e);
-			changes.push("❌ An error occurred while requesting the TTHQ api!");
-		});
+		}
 	}
 	for (const id of context.context.channel_id) {
 		const channel = context.guild.channels.cache.get(id);
