@@ -19,6 +19,13 @@ export function getEndpointStatus(guildId: Snowflake, short: boolean): { success
 	return {success: true, message: "✅ This server is correctly registered on the TTHQ api!"};
 }
 
+export function getGuildsForClan(clan: string): Snowflake[] {
+	if (clanCache.hasOwnProperty(clan)) {
+		return clanCache[clan];
+	}
+	return [];
+}
+
 function refreshCache() {
 	if (lastRefresh + 6000 > Date.now()) // 6 seconds
 		return;

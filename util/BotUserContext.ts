@@ -1,6 +1,5 @@
-import {BaseMessageOptions, ChatInputCommandInteraction, Guild, GuildMember, Message, MessagePayload, Snowflake, TextBasedChannel, User} from "discord.js";
-import {Database} from "sqlite3";
-import {client, db, rewards} from "../PointManager";
+import {ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessagePayload, Snowflake, TextBasedChannel, User} from "discord.js";
+import {client, rewards} from "../PointManager";
 import {getServerContext, ServerSetting} from "../BotSettingProvider";
 import {RewardAnswer} from "./RewardManager";
 import {BaseUserContext} from "./BaseUserContext";
@@ -8,7 +7,7 @@ import {BaseUserContext} from "./BaseUserContext";
 export class BotUserContext extends BaseUserContext {
 	context: ServerSetting;
 
-	constructor(id: Snowflake, context: ServerSetting, base: Message | ChatInputCommandInteraction | null) {
+	constructor(id: Snowflake, context: ServerSetting, base: Message | ChatInputCommandInteraction | ButtonInteraction | null) {
 		super(id, base, (base && base.guild) ? null : client.guilds.cache.get(context.guild_id) as Guild);
 		this.context = context;
 	}
@@ -235,7 +234,7 @@ export class BotUserContext extends BaseUserContext {
 	}
 }
 
-export function getUser(member: GuildMember, base: ChatInputCommandInteraction | Message): BotUserContext | BaseUserContext {
+export function getUser(member: GuildMember, base: ChatInputCommandInteraction | ButtonInteraction | Message): BotUserContext | BaseUserContext {
 	const context = getServerContext(member.guild.id);
 	if (!context) {
 		return new BaseUserContext(member.id, base, member.guild);

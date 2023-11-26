@@ -16,6 +16,8 @@ export default {
 		.addSubcommand(sub => sub.setName("removemodrole").setDescription("Remove a role from the mod roles").addRoleOption(option => option.setName("role").setDescription("The role to remove").setRequired(true)))
 		.addSubcommand(sub => sub.setName("addrewardrole").setDescription("Add a role to the reward roles").addRoleOption(option => option.setName("role").setDescription("The role to add").setRequired(true)).addIntegerOption(option => option.setName("type").setDescription("The type of reward").setRequired(true).addChoices({name: "Points", value: 0}, {name: "Wins", value: 1})).addIntegerOption(option => option.setName("amount").setDescription("The amount of points or wins required").setRequired(true)))
 		.addSubcommand(sub => sub.setName("removerewardrole").setDescription("Remove a role from the reward roles").addRoleOption(option => option.setName("role").setDescription("The role to remove").setRequired(true)))
+		.addSubcommand(sub => sub.setName("setwinfeed").setDescription("Set the win feed channel").addChannelOption(option => option.setName("channel").setDescription("The channel to set").setRequired(true)))
+		.addSubcommand(sub => sub.setName("removewinfeed").setDescription("Remove the win feed channel"))
 		.addSubcommand(sub => sub.setName("show").setDescription("Show the current settings"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
@@ -66,6 +68,16 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 	} else {
 		if (updateChannel.permissionsFor(client.user!)?.has(PermissionFlagsBits.SendMessages) !== true || updateChannel.permissionsFor(client.user!)?.has(PermissionFlagsBits.ViewChannel) !== true) {
 			changes.push(`I don't have permission to send messages in ${updateChannel}`);
+		}
+	}
+	if (context.context.win_feed) {
+		const channel = context.guild.channels.cache.get(context.context.win_feed);
+		if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
+			changes.push(`Invalid win feed ${channel}`);
+		} else {
+			if (channel.permissionsFor(client.user!)?.has(PermissionFlagsBits.SendMessages) !== true || channel.permissionsFor(client.user!)?.has(PermissionFlagsBits.ViewChannel) !== true) {
+				changes.push(`I don't have permission to send messages in ${channel}`);
+			}
 		}
 	}
 	for (const role of context.context.mod_roles) {
@@ -131,13 +143,15 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 			return [
 				{
 					name: "♻ Automatic Point Management",
-					value: context.auto_points ? "Enabled" : "Disabled" + `\nAllows to automatically add points when members with them using [BetterTT](https://platz1de.github.io/BetterTT/).\n\nMake sure to follow the setup guide: </endpoint:${getCommandId("endpoint")}>\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`
 					value: (context.auto_points ? "Enabled" : "Disabled") + `\nAllows to automatically add points when members with them using [BetterTT](https://platz1de.github.io/BetterTT/).\n\nMake sure to follow the setup guide: </endpoint:${getCommandId("endpoint")}>\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`
 				},
 				{
 					name: "🔢 Multiplier",
 					value: (context.multiplier ? `\`x ${context.multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>`
 				},
+				{
+					name: "📝 Win Feed",
+					value: (context.win_feed ? `<#${context.win_feed}>` : "Inactive") + `\nPosts a message in this channel when your clan wins a game. Allows members to claim points.\nEdit: </settings setwinfeed:${getCommandId("settings")}> & </settings removewinfeed:${getCommandId("settings")}>`
 				}
 			];
 		case 1:

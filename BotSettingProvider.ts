@@ -15,6 +15,7 @@ export interface ServerSetting {
 	rewards: { role_id: string, type: "points" | "wins", count: number }[],
 	multiplier: { amount: number, end: number | null, description: string } | null,
 	webhooks: { clan: string, url: string, channel: Snowflake }[],
+	win_feed: Snowflake | null,
 	status: number // first bit: 1 = points imported from 3rd party
 }
 
@@ -25,6 +26,7 @@ for (const i in settings) {
 	if (!settings[i].status) settings[i].status = 0;
 	if (!settings[i].auto_points) settings[i].auto_points = false;
 	if (!settings[i].webhooks) settings[i].webhooks = [];
+	if (!settings[i].win_feed) settings[i].win_feed = null;
 	indices[settings[i].guild_id] = parseInt(i);
 	rewards.loadRewards(settings[i]);
 	for (const webhook of settings[i].webhooks) {
@@ -33,7 +35,7 @@ for (const i in settings) {
 }
 
 export function getDefaults(): ServerSetting {
-	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, webhooks: [], status: 0};
+	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, webhooks: [], win_feed: null, status: 0};
 }
 
 function updateSettings() {
