@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "PointManager.ts",
   "dependencies": {
-    "discord.js": "^14.11.0",
+    "discord.js": "^14.14.1",
     "quickchart-js": "^3.1.2",
     "sqlite3": "^5.1.6",
-	"jsonwebtoken": "^9.0.1",
-	"@types/jsonwebtoken": "^9.0.2"
+	"jsonwebtoken": "^9.0.2",
+	"@types/jsonwebtoken": "^9.0.5"
   }
 }
