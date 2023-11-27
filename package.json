@@ -4,7 +4,8 @@
   "main": "PointManager.ts",
   "dependencies": {
     "discord.js": "^14.14.1",
-    "quickchart-js": "^3.1.2",
+    "chartjs-node-canvas": "^4.1.6",
+    "chartjs-adapter-dayjs-3": "^1.2.3",
     "sqlite3": "^5.1.6",
 	"jsonwebtoken": "^9.0.2",
 	"@types/jsonwebtoken": "^9.0.5"

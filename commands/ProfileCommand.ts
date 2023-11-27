@@ -2,8 +2,7 @@ import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, B
 import {PointCommand, rewards} from "../PointManager";
 import {format} from "../util/EmbedUtil";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
-
-const QuickChart = require("quickchart-js");
+import {renderDualChart} from "../util/GraphRenderer";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
@@ -38,33 +37,9 @@ async function showProfileEmbed(context: BotUserContext, target: Snowflake, page
 			);
 			break;
 		case 2:
-			const data: { day: string, wins: number, points: number }[] = await provider.getLegacyData(30);
-			const qc = new QuickChart();
-			qc.setConfig({
-				type: "line",
-				data: {
-					labels: data.map(d => d.day),
-					datasets: [
-						{label: "Points", data: data.map(d => d.points), yAxisID: "A"},
-						{label: "Wins", data: data.map(d => d.wins), yAxisID: "B"}
-					]
-				},
-				options: {
-					scales: {
-						yAxes: [{
-							id: "A",
-							type: "linear",
-							position: "left"
-						}, {
-							id: "B",
-							type: "linear",
-							position: "right"
-						}]
-					}
-				}
-			});
 			try {
-				files.push(new AttachmentBuilder(await qc.toBinary()).setName("chart.png"));
+				const buffer = await renderDualChart(await provider.getLegacyData(30), "Profile of " + provider.user.tag, false);
+				files.push(new AttachmentBuilder(buffer).setName("chart.png"));
 				embed.setImage("attachment://chart.png");
 			} catch (e) {
 				embed.setDescription("Failed to generate chart, please try again");
@@ -107,7 +82,7 @@ async function showProfileEmbed(context: BotUserContext, target: Snowflake, page
 	});
 }
 
-export async function tryProfileEntryMessage(context: BotUserContext, message: string) : Promise<boolean> {
+export async function tryProfileEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
 	let user = null;
 	if (message === "p") {
 		await showProfileEmbed(context, context.id, 0);
