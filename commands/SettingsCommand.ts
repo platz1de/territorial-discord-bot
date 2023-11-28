@@ -1,6 +1,6 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, Snowflake, TextChannel} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
 import {ServerSetting, setServerSetting} from "../BotSettingProvider";
-import {client, config, getCommandId, rewards} from "../PointManager";
+import {client, getCommandId, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
 import {getEndpointStatus} from "../util/TTHQ";
 import {getOrSendMessage} from "../util/ClaimWinChannel";
@@ -22,6 +22,8 @@ export default {
 		.addSubcommand(sub => sub.setName("setclaimchannel").setDescription("Set the claim channel").addChannelOption(option => option.setName("channel").setDescription("The channel to set").setRequired(true)))
 		.addSubcommand(sub => sub.setName("removeclaimchannel").setDescription("Remove the claim channel"))
 		.addSubcommand(sub => sub.setName("setclaimchanneldescription").setDescription("Set the claim channel description").addStringOption(option => option.setName("description").setDescription("The description to set").setRequired(true)))
+		.addSubcommand(sub => sub.setName("addfactor").setDescription("Add or remove a factor button").addStringOption(option => option.setName("name").setDescription("The name of the button").setRequired(true)).addIntegerOption(option => option.setName("factor").setDescription("The factor of the button (in percent)").setRequired(true)))
+		.addSubcommand(sub => sub.setName("removefactor").setDescription("Remove a factor button").addStringOption(option => option.setName("name").setDescription("The name of the button").setRequired(true)))
 		.addSubcommand(sub => sub.setName("show").setDescription("Show the current settings"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
@@ -161,6 +163,10 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 				{
 					name: "📑 Claim Channel",
 					value: (context.claim_channel ? `<#${context.claim_channel}>` : "Inactive") + `\nDescription: ${context.claim_channel_description}\nAllows members to claim points for games they won by selecting a recent game.\nEdit: </settings setclaimchannel:${getCommandId("settings")}> & </settings removeclaimchannel:${getCommandId("settings")}> & </settings setclaimchanneldescription:${getCommandId("settings")}>`
+				},
+				{
+					name: "🔘 Factor Buttons",
+					value: `${context.factor_buttons.length === 0 ? "None" : context.factor_buttons.map((f) => `${f.name}: ${f.factor}\n`)}\nAllows you to add multiple claiming methods for win feeds / claim channels. E.g. you can have one button for 100% and one for 50% of the points (note that the requirements your server puts aren't verified).\nEdit: </settings addfactor:${getCommandId("settings")}> & </settings removefactor:${getCommandId("settings")}>`
 				}
 			];
 		case 1:
@@ -224,6 +230,33 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 		const description = data.options.getString("description", true);
 		context.context.claim_channel_description = description;
 		await context.reply(`Set the claim channel description to ${description}!`);
+		await getOrSendMessage(context.context);
+	} else if (index === "addfactor") {
+		const name = data.options.getString("name", true);
+		const factor = data.options.getInteger("factor", true);
+		if (context.context.factor_buttons.some((f) => f.name === name)) {
+			await context.reply("That factor button already exists!");
+			return;
+		}
+		if (context.context.factor_buttons.length >= 5) {
+			await context.reply("You can't add more than 5 factor buttons!");
+			return;
+		}
+		if (isNaN(factor) || factor < 1 || factor > 200) {
+			await context.reply("Invalid factor! Must be between 1 and 200!");
+			return;
+		}
+		context.context.factor_buttons.push({name, factor: factor / 100});
+		await context.reply(`Added the factor button ${name} with factor ${factor}%!`);
+		await getOrSendMessage(context.context);
+	} else if (index === "removefactor") {
+		const name = data.options.getString("name", true);
+		if (!context.context.factor_buttons.some((f) => f.name === name)) {
+			await context.reply("That factor button doesn't exist!");
+			return;
+		}
+		context.context.factor_buttons.splice(context.context.factor_buttons.findIndex((f) => f.name === name), 1);
+		await context.reply(`Removed the factor button ${name}!`);
 		await getOrSendMessage(context.context);
 	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed", "setclaimchannel"].includes(index)) {
 		let channel = data.options.getChannel("channel", true);

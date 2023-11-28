@@ -20,14 +20,23 @@ export async function getOrSendMessage(context: ServerSetting) {
 			break;
 		}
 	}
+	let buttons = [];
+	for (const factor in context.factor_buttons) {
+		buttons.push(
+			new ButtonBuilder().setCustomId(`claim_channel_factor_${factor}`).setLabel(context.factor_buttons[factor].name).setStyle(ButtonStyle.Primary)
+		);
+	}
+	if (buttons.length === 0) {
+		buttons.push(
+			new ButtonBuilder().setCustomId("claim_channel").setLabel("Claim Points").setStyle(ButtonStyle.Primary)
+		);
+	}
 	let content = {
 		embeds: [
 			new EmbedBuilder().setTitle("Claim Win").setDescription(context.claim_channel_description).setColor(Colors.Blue).setFooter({text: "Click the button below to claim your win"}).toJSON()
 		],
 		components: [
-			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				new ButtonBuilder().setCustomId("claim_channel").setLabel("Claim Win").setStyle(ButtonStyle.Primary)
-			)
+			new ActionRowBuilder<ButtonBuilder>().addComponents(buttons)
 		]
 	};
 	if (!message) {
@@ -44,7 +53,7 @@ export async function getOrSendMessage(context: ServerSetting) {
 
 export async function handleChannelInteraction(interaction: Interaction) {
 	if (interaction.isButton() && interaction.member instanceof GuildMember) {
-		if (interaction.customId !== "claim_channel") return;
+		if (interaction.customId !== "claim_channel" && !interaction.customId.startsWith("claim_channel_factor_")) return;
 		const context = getUser(interaction.member, interaction);
 		if (!(context instanceof BotUserContext)) return;
 		let clan = getClanForGuild(context.guild.id);
@@ -67,6 +76,10 @@ export async function handleChannelInteraction(interaction: Interaction) {
 			});
 			return;
 		}
+		let factorId = "n";
+		if (interaction.customId.startsWith("claim_channel_factor_")) {
+			factorId = interaction.customId.substring(21);
+		}
 		interaction.reply({
 			embeds: [
 				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("Please select a game to claim the win for!").setColor(Colors.Blue).setTimestamp().toJSON()
@@ -74,7 +87,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 			components: [
 				new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 					new StringSelectMenuBuilder().setCustomId("claim_channel").setPlaceholder("Select a game").addOptions(choices.map((choice) => {
-						return {label: choice.contest ? "Contest with " + choice.points + " points on " + choice.map : choice.points + " points on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.points}`}
+						return {label: choice.contest ? "Contest with " + choice.points + " points on " + choice.map : choice.points + " points on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.points}-${factorId}-` + Math.random().toString(10)}
 					}))
 				)
 			],
@@ -89,9 +102,15 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		let contest = parts[0] === "cont";
 		let map = parts[1];
 		let points = parseInt(parts[2]) * (contest ? 2 : 1);
+		let factor = parts[3];
 		let realPoints = points;
 		if (context.context.multiplier) {
 			realPoints = Math.ceil(realPoints * context.context.multiplier.amount);
+		}
+		if (factor !== "n") {
+			if (!context.context.factor_buttons[parseInt(factor)]) return;
+			realPoints = Math.ceil(realPoints * context.context.factor_buttons[parseInt(factor)].factor);
+			points = Math.ceil(points * context.context.factor_buttons[parseInt(factor)].factor);
 		}
 		context.registerWin(realPoints).then((response) => {
 			interaction.reply({
