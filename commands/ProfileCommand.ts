@@ -38,7 +38,7 @@ async function showProfileEmbed(context: BotUserContext, target: Snowflake, page
 			break;
 		case 2:
 			try {
-				const buffer = await renderDualChart(await provider.getLegacyData(30), "Profile of " + provider.user.tag, false);
+				const buffer = await renderDualChart(await provider.getLegacyData(30));
 				files.push(new AttachmentBuilder(buffer).setName("chart.png"));
 				embed.setImage("attachment://chart.png");
 			} catch (e) {

@@ -10,7 +10,7 @@ import {handleMessage} from "./util/EntryMessageHandler";
 import {handleFeedInteraction} from "./util/ClaimWinFeed";
 import {handleChannelInteraction} from "./util/ClaimWinChannel";
 
-export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, wss_secret: string } = require("./config.json");
+export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, btt_api_url: string, wss_secret: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
 
 export interface Command {
@@ -52,6 +52,7 @@ client.once(Events.ClientReady, async () => {
 	await registerCommand("ShortCommand");
 	await registerCommand("SubscribeFeed");
 	await registerCommand("UnSubscribeFeed");
+	await registerCommand("GraphCommand");
 	await refreshSlashCommands();
 });
 

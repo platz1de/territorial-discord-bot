@@ -5,7 +5,7 @@
   "dependencies": {
     "discord.js": "^14.14.1",
     "chartjs-node-canvas": "^4.1.6",
-    "chartjs-adapter-dayjs-3": "^1.2.3",
+    "date-fns": "^2.30.0",
     "sqlite3": "^5.1.6",
 	"jsonwebtoken": "^9.0.2",
 	"@types/jsonwebtoken": "^9.0.5"
