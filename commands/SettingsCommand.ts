@@ -99,6 +99,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		if (!context.guild.roles.cache.has(role.role_id)) {
 			changes.push(`Removed invalid role ${role.role_id} from the reward roles`);
 			context.context.rewards.splice(context.context.rewards.indexOf(role), 1);
+			rewards.loadRewards(context.context);
 		} else if (context.guild.roles.cache.get(role.role_id)?.editable !== true) {
 			changes.push(`I don't have permission to give out <@&${role.role_id}>`);
 		}
