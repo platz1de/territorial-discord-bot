@@ -1,18 +1,20 @@
-import {BaseMessageOptions, ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessagePayload, Snowflake, StringSelectMenuInteraction, TextBasedChannel, User} from "discord.js";
+import {BaseMessageOptions, ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageContextMenuCommandInteraction, MessagePayload, Snowflake, StringSelectMenuInteraction, TextBasedChannel, User, UserContextMenuCommandInteraction} from "discord.js";
 import {Database} from "sqlite3";
 import {client, db} from "../PointManager";
+
+export type InteractionTypes = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction | MessageContextMenuCommandInteraction | UserContextMenuCommandInteraction;
 
 export class BaseUserContext {
 	id: Snowflake;
 	db: Database;
-	base: Message | ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | null;
+	base: Message | InteractionTypes | null;
 	last: Message | undefined;
 	user: User;
 	member: GuildMember | undefined;
 	guild: Guild;
 	channel: TextBasedChannel | undefined;
 
-	constructor(id: Snowflake, base: Message | ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction | null, guild: Guild | null = null) {
+	constructor(id: Snowflake, base: Message | InteractionTypes | null, guild: Guild | null = null) {
 		this.id = id;
 		this.db = db.getProvider();
 		this.base = base;
@@ -23,9 +25,9 @@ export class BaseUserContext {
 		} else {
 			throw new Error("Guild not found");
 		}
-		if (base instanceof ChatInputCommandInteraction || base instanceof ButtonInteraction || base instanceof StringSelectMenuInteraction) this.user = base.user;
-		else if (base) this.user = base.author;
-		else this.user = client.user as User; //Dummy user
+		if (base instanceof Message) this.user = base.author;
+		else if (!base) this.user = client.user as User; //Dummy user
+		else this.user = base.user;
 		if (base && base.member) this.member = base.member as GuildMember;
 		if (base && base.channel) {
 			this.channel = base.channel;
@@ -50,14 +52,14 @@ export class BaseUserContext {
 
 	async reply(message: string | MessagePayload | BaseMessageOptions): Promise<Message> {
 		if (!this.base) throw new Error("Base not found");
-		if (this.base instanceof ChatInputCommandInteraction || this.base instanceof ButtonInteraction || this.base instanceof StringSelectMenuInteraction) {
-			return await this.base.editReply(message);
-		} else {
+		if (this.base instanceof Message) {
 			if (this.last) {
 				return await this.last.edit(message);
 			} else {
 				return this.last = await this.base.reply(message);
 			}
+		} else {
+			return await this.base.editReply(message);
 		}
 	}
 

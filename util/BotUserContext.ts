@@ -1,13 +1,13 @@
-import {ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, Snowflake, StringSelectMenuInteraction} from "discord.js";
+import {Guild, GuildMember, Message, Snowflake} from "discord.js";
 import {client, rewards} from "../PointManager";
 import {getServerContext, ServerSetting} from "../BotSettingProvider";
 import {RewardAnswer} from "./RewardManager";
-import {BaseUserContext} from "./BaseUserContext";
+import {BaseUserContext, InteractionTypes} from "./BaseUserContext";
 
 export class BotUserContext extends BaseUserContext {
 	context: ServerSetting;
 
-	constructor(id: Snowflake, context: ServerSetting, base: Message | ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | null) {
+	constructor(id: Snowflake, context: ServerSetting, base: Message | InteractionTypes | null) {
 		super(id, base, (base && base.guild) ? null : client.guilds.cache.get(context.guild_id) as Guild);
 		this.context = context;
 	}
@@ -234,7 +234,7 @@ export class BotUserContext extends BaseUserContext {
 	}
 }
 
-export function getUser(member: GuildMember, base: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | Message): BotUserContext | BaseUserContext {
+export function getUser(member: GuildMember, base: InteractionTypes | Message): BotUserContext | BaseUserContext {
 	const context = getServerContext(member.guild.id);
 	if (!context) {
 		return new BaseUserContext(member.id, base, member.guild);

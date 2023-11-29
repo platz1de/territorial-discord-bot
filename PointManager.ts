@@ -1,14 +1,15 @@
-import {Client, Collection, ColorResolvable, EmbedBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, TextChannel} from "discord.js";
+import {Client, Collection, ColorResolvable, ContextMenuCommandBuilder, EmbedBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, TextChannel, ApplicationCommandType} from "discord.js";
 import rewards = require("./util/RewardManager");
 import db = require("./db/DataBaseManager");
 import {sendUninitializedError} from "./util/EmbedUtil";
 import {handleDialog, hasDialog} from "./util/SetupDisalogUtil";
-import {BotUserContext, getUser} from "./util/BotUserContext";
+import {BotUserContext, getRawUser, getUser} from "./util/BotUserContext";
 import {removeServerSetting} from "./BotSettingProvider";
 import {BaseUserContext} from "./util/BaseUserContext";
 import {handleMessage} from "./util/EntryMessageHandler";
 import {handleFeedInteraction} from "./util/ClaimWinFeed";
 import {handleChannelInteraction} from "./util/ClaimWinChannel";
+import {showProfileEmbed} from "./commands/ProfileCommand";
 
 export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, btt_api_url: string, wss_secret: string } = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
@@ -57,6 +58,23 @@ client.once(Events.ClientReady, async () => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+	if (interaction.isContextMenuCommand()) {
+		if (!(interaction.member instanceof GuildMember)) return;
+		const context = getUser(interaction.member, interaction);
+		if (!(context instanceof BotUserContext)) return;
+		if (interaction.commandType === ApplicationCommandType.User) {
+			let id = interaction.targetId;
+			if (!id) return;
+			await showProfileEmbed(context, id, 0, true);
+		} else if (interaction.commandType === ApplicationCommandType.Message) {
+			let id = interaction.targetId;
+			if (!id) return;
+			let message = await interaction.channel?.messages.fetch(id);
+			if (!message) return;
+			await showProfileEmbed(context, message.author.id, 0, true);
+		}
+		return;
+	}
 	handleFeedInteraction(interaction).catch(console.error);
 	handleChannelInteraction(interaction).catch(console.error);
 	if (!interaction.isChatInputCommand() || !(interaction.member instanceof GuildMember)) return;
@@ -128,6 +146,14 @@ async function refreshSlashCommands() {
 	for (const command of commandRegistry.values()) {
 		commands.push(command.slashData.toJSON());
 	}
+	commands.push(new ContextMenuCommandBuilder()
+		.setName("View Profile")
+		.setType(ApplicationCommandType.User)
+		.setDMPermission(false));
+	commands.push(new ContextMenuCommandBuilder()
+		.setName("View Profile")
+		.setType(ApplicationCommandType.Message)
+		.setDMPermission(false));
 	let commandTemp = await rest.put(Routes.applicationCommands(client.user.id), {body: commands});
 	// @ts-ignore
 	for (const command of commandTemp) {

@@ -1,4 +1,4 @@
-import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder, Snowflake, User} from "discord.js";
+import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, InteractionReplyOptions, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
 import {PointCommand, rewards} from "../PointManager";
 import {format} from "../util/EmbedUtil";
 import {BotUserContext, getRawUser} from "../util/BotUserContext";
@@ -14,7 +14,7 @@ export default {
 	}
 } as PointCommand;
 
-async function showProfileEmbed(context: BotUserContext, target: Snowflake, page: number) {
+export async function showProfileEmbed(context: BotUserContext, target: Snowflake, page: number, ephemeral: boolean = false) {
 	const provider = target === context.id ? context : getRawUser(context.guild.id, target);
 	if (!provider) return;
 	await provider.fetchMember();
@@ -47,7 +47,7 @@ async function showProfileEmbed(context: BotUserContext, target: Snowflake, page
 			}
 			break;
 	}
-	const msg = await context.reply({
+	const content : InteractionReplyOptions = {
 		embeds: [
 			embed.setAuthor({name: provider.user.tag, iconURL: provider.user.displayAvatarURL()}).setColor(Colors.Green).setTimestamp().toJSON()
 		], components: [
@@ -58,7 +58,16 @@ async function showProfileEmbed(context: BotUserContext, target: Snowflake, page
 			)
 		],
 		files: files
-	});
+	};
+
+	let msg: Message;
+	if (ephemeral && context.base && !(context.base instanceof Message)) {
+		content.ephemeral = true;
+		let response = await context.base.reply(content);
+		msg = await response.fetch();
+	} else {
+		msg = await context.reply(content);
+	}
 
 	if (!context.channel) return;
 	const collector = context.channel.createMessageComponentCollector({time: 60000});
