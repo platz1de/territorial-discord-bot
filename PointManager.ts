@@ -11,7 +11,7 @@ import {handleFeedInteraction} from "./util/ClaimWinFeed";
 import {handleChannelInteraction} from "./util/ClaimWinChannel";
 import {showProfileEmbed} from "./commands/ProfileCommand";
 
-export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, btt_api_url: string, wss_secret: string } = require("./config.json");
+export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, btt_api_url: string, wss_secret: string, bot_owner: string} = require("./config.json");
 export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
 
 export interface Command {
