@@ -6,12 +6,14 @@ import {BotUserContext} from "../util/BotUserContext";
 export default {
 	slashData: new SlashCommandBuilder().setName("leaderboard").setDescription("Show the leaderboard")
 		.addIntegerOption(option => option.setName("page").setDescription("The page to view"))
-		.addIntegerOption(option => option.setName("type").setDescription("Type of leaderboard").addChoices({name: "Points", value: 0}, {name: "Wins", value: 1})),
+		.addIntegerOption(option => option.setName("type").setDescription("Type of leaderboard").addChoices({name: "Points", value: 0}, {name: "Wins", value: 1}))
+		.addIntegerOption(option => option.setName("duration").setDescription("The duration to view")),
 	execute: async (context: BotUserContext) => {
 		const interaction = context.base as ChatInputCommandInteraction;
 		let page: number = interaction.options.getInteger("page") || 1;
 		const type: number = interaction.options.getInteger("type") || 0;
-		await buildLeaderboardPage(context, page, type === 1, -1);
+		const duration: number = interaction.options.getInteger("duration") || -1;
+		await buildLeaderboardPage(context, page, type === 1, duration);
 	}
 } as PointCommand;
 

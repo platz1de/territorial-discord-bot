@@ -56,9 +56,9 @@ export async function handleMessage(context: BotUserContext, message: string) {
 		});
 	}
 
-	let ret = await tryAddEntryMessage(context, message);
+	let ret = await tryLeaderboardEntryMessage(context, message);
+	if (!ret) ret = await tryAddEntryMessage(context, message);
 	if (!ret) ret = await tryRemoveEntryMessage(context, message);
-	if (!ret) ret = await tryLeaderboardEntryMessage(context, message);
 	if (!ret) ret = await tryProfileEntryMessage(context, message);
 	if (!ret) await tryMultiplierEntryMessage(context, message);
 }
