@@ -32,8 +32,7 @@ export default {
 </multiplier set:${getCommandId("multiplier")}> - Set the current multiplier
 </multiplier clear:${getCommandId("multiplier")}> - Remove the current multiplier
 </multiplier setend:${getCommandId("multiplier")}> - Set the end date of the current multiplier
-</settings show:${getCommandId("settings")}> - Change server settings
-</endpoint:${getCommandId("endpoint")}> - Check TTHQ Endpoint status`
+</settings show:${getCommandId("settings")}> - Change server settings`
 						}
 					).setTimestamp().toJSON()
 			]

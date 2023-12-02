@@ -1,8 +1,7 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
-import {ServerSetting, setServerSetting} from "../BotSettingProvider";
+import {ServerSetting, setServerSetting, updateClanTag} from "../BotSettingProvider";
 import {client, getCommandId, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
-import {getEndpointStatus} from "../util/TTHQ";
 import {getOrSendMessage} from "../util/ClaimWinChannel";
 
 export default {
@@ -24,6 +23,7 @@ export default {
 		.addSubcommand(sub => sub.setName("setclaimchanneldescription").setDescription("Set the claim channel description").addStringOption(option => option.setName("description").setDescription("The description to set").setRequired(true)))
 		.addSubcommand(sub => sub.setName("addfactor").setDescription("Add or remove a factor button").addStringOption(option => option.setName("name").setDescription("The name of the button").setRequired(true)).addIntegerOption(option => option.setName("factor").setDescription("The factor of the button (in percent)").setRequired(true)))
 		.addSubcommand(sub => sub.setName("removefactor").setDescription("Remove a factor button").addStringOption(option => option.setName("name").setDescription("The name of the button").setRequired(true)))
+		.addSubcommand(sub => sub.setName("settag").setDescription("Set the clan tag").addStringOption(option => option.setName("tag").setDescription("The tag to set").setRequired(true)))
 		.addSubcommand(sub => sub.setName("show").setDescription("Show the current settings"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
@@ -40,9 +40,8 @@ export default {
 async function showSettingsEmbed(context: BotUserContext, page: number) {
 	let changes = [], isCritical = false;
 	if (context.context.auto_points || context.context.win_feed || context.context.claim_channel) {
-		let status = getEndpointStatus(context.guild.id, true);
-		if (!status.success) {
-			changes.push(status.message + `\nUse </endpoint:${getCommandId("endpoint")}> for instructions on how to fix this!`);
+		if (!context.context.tag) {
+			changes.push(`This server doesn't have a clan tag set! Use </settings settag:${getCommandId("settings")}> to set it!`);
 			isCritical = true;
 		}
 	}
@@ -111,7 +110,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(isCritical ? Colors.Red : Colors.Yellow).toJSON());
 	}
 	embeds.push(new EmbedBuilder().setAuthor({name: context.guild.name, iconURL: context.guild.iconURL() || undefined})
-		.setTitle(["Point Management Settings", "Role Settings", "Channel Settings"][page])
+		.setTitle(["Point Management Settings", "Role Settings", "Channel Settings", "Win Claiming Settings"][page])
 		.addFields(getSettingsFields(context.context, page))
 		.setColor(Colors.Blurple).setFooter({
 			text: "Use buttons below to navigate"
@@ -121,6 +120,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		components: [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder().setCustomId("settings:p").setLabel("Points").setStyle(page === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+				new ButtonBuilder().setCustomId("settings:m").setLabel("Win Claiming").setStyle(page === 3 ? ButtonStyle.Primary : ButtonStyle.Secondary),
 				new ButtonBuilder().setCustomId("settings:r").setLabel("Roles").setStyle(page === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
 				new ButtonBuilder().setCustomId("settings:c").setLabel("Channels").setStyle(page === 2 ? ButtonStyle.Primary : ButtonStyle.Secondary)
 			)
@@ -133,7 +133,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== context.user.id) return;
 		await i.deferUpdate();
 		collector.stop();
-		await showSettingsEmbed(context, ["settings:p", "settings:r", "settings:c"].indexOf(i.customId));
+		await showSettingsEmbed(context, ["settings:p", "settings:r", "settings:c", "settings:m"].indexOf(i.customId));
 	});
 
 	collector.on("end", async (collected, reason) => {
@@ -149,13 +149,20 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 		case 0:
 			return [
 				{
+					name: "🏷️ Clan Tag",
+					value: `\`${context.tag || "None"}\`\nSet this to enable the full feature set.\nEdit: </settings settag:${getCommandId("settings")}>`
+				},
+				{
 					name: "♻ Automatic Point Management",
 					value: (context.auto_points ? "Enabled" : "Disabled") + `\nAllows to automatically add points when members with them using [BetterTT](https://platz1de.github.io/BetterTT/).\n\nMake sure to follow the setup guide: </endpoint:${getCommandId("endpoint")}>\nEdit: </settings toggleautopoints:${getCommandId("settings")}>`
 				},
 				{
 					name: "🔢 Multiplier",
 					value: (context.multiplier ? `\`x ${context.multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>`
-				},
+				}
+			];
+		case 3:
+			return [
 				{
 					name: "📝 Win Feed",
 					value: (context.win_feed ? `<#${context.win_feed}>` : "Inactive") + `\nPosts a message in this channel when your clan wins a game. Allows members to claim points.\nEdit: </settings setwinfeed:${getCommandId("settings")}> & </settings removewinfeed:${getCommandId("settings")}>`
@@ -166,7 +173,7 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 				},
 				{
 					name: "🔘 Factor Buttons",
-					value: `${context.factor_buttons.length === 0 ? "None" : context.factor_buttons.map((f) => `${f.name}: ${f.factor}\n`)}\nAllows you to add multiple claiming methods for win feeds / claim channels. E.g. you can have one button for 100% and one for 50% of the points (note that the requirements your server puts aren't verified).\nEdit: </settings addfactor:${getCommandId("settings")}> & </settings removefactor:${getCommandId("settings")}>`
+					value: `${context.factor_buttons.length === 0 ? "None" : context.factor_buttons.map((f) => `${f.name}: ${f.factor}\n`).join("")}\nAllows you to add multiple claiming methods for win feeds / claim channels. E.g. you can have one button for 100% and one for 50% of the points (note that the requirements your server puts aren't verified).\nEdit: </settings addfactor:${getCommandId("settings")}> & </settings removefactor:${getCommandId("settings")}>`
 				}
 			];
 		case 1:
@@ -258,6 +265,14 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 		context.context.factor_buttons.splice(context.context.factor_buttons.findIndex((f) => f.name === name), 1);
 		await context.reply(`Removed the factor button ${name}!`);
 		await getOrSendMessage(context.context);
+	} else if (index === "settag") {
+		const tag = data.options.getString("tag", true);
+		if (tag.length > 7) {
+			await context.reply("Invalid tag! Must be 7 characters or fewer!");
+			return;
+		}
+		updateClanTag(context.context, tag === "" ? null : tag.toUpperCase());
+		await context.reply(`Set the clan tag to ${context.context.tag || "None"}!`);
 	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed", "setclaimchannel"].includes(index)) {
 		let channel = data.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {

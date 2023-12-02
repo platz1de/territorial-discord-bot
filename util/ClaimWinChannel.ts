@@ -3,7 +3,6 @@ import {ServerSetting} from "../BotSettingProvider";
 import {BotUserContext, getUser} from "./BotUserContext";
 import {format, toRewardString} from "./EmbedUtil";
 import {client} from "../PointManager";
-import {getClanForGuild} from "./TTHQ";
 import {getCacheForClan} from "./GameDataDistributor";
 
 export async function getOrSendMessage(context: ServerSetting) {
@@ -56,11 +55,11 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		if (interaction.customId !== "claim_channel" && !interaction.customId.startsWith("claim_channel_factor_")) return;
 		const context = getUser(interaction.member, interaction);
 		if (!(context instanceof BotUserContext)) return;
-		let clan = getClanForGuild(context.guild.id);
+		let clan = context.context.tag;
 		if (!clan) {
 			interaction.reply({
 				embeds: [
-					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("This channel is not associated with a clan! The TTHQ Endpoint was set up wrong!").setColor(Colors.Red).setTimestamp().toJSON()
+					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("This serer does not have a clan tag set!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
 				ephemeral: true
 			});

@@ -1,7 +1,6 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedBuilder, GuildMember, Interaction, Message, NewsChannel, Snowflake, TextChannel} from "discord.js";
 import {client} from "../PointManager";
-import {getGuildsForClan} from "./TTHQ";
-import {getServerContext} from "../BotSettingProvider";
+import {getGuildsForClan, getServerContext} from "../BotSettingProvider";
 import {BotUserContext, getUser} from "./BotUserContext";
 import {format, toRewardString} from "./EmbedUtil";
 

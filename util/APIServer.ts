@@ -5,6 +5,7 @@ import {client, db} from '../PointManager';
 import {Colors, EmbedBuilder, TextChannel} from "discord.js";
 import {format, toRewardString} from "./EmbedUtil";
 import {getRawUser} from "./BotUserContext";
+import {getGuildsForClan} from "../BotSettingProvider";
 
 const cert = readFileSync("public.key");
 
@@ -34,15 +35,7 @@ export const server = createServer(function (r, s) {
 			s.write("User not found");
 			s.end();
 		});
-	} else if (r.url?.match(/\/\d+/) && r.method === "POST") {
-		const targetGuild = r.url.split("/")[1];
-		const guildUser = getRawUser(targetGuild, "");
-		if (!guildUser) {
-			s.writeHead(404);
-			s.write("Guild not found");
-			s.end();
-			return;
-		}
+	} else if (r.url?.match(/\//) && r.method === "POST") {
 		let body = "";
 		r.on("data", (chunk) => {
 			body += chunk;
@@ -62,32 +55,33 @@ export const server = createServer(function (r, s) {
 						s.end();
 						return;
 					}
-					if (decoded.clan !== targetGuild || !guildUser.context.auto_points) {
-						s.writeHead(403);
-						s.write("Forbidden");
-						s.end();
-						return;
-					}
-					const multiplier = db.getSettingProvider().getMultiplier(guildUser);
-					let realPoints = decoded.points;
-					if (multiplier) {
-						realPoints = Math.ceil(realPoints * multiplier.amount);
-					}
-					for (const targetClient of decoded.clients) {
-						const user = getRawUser(targetGuild, targetClient.username);
-						if (!user) continue;
-						let channel = client.channels.cache.get(user.context.channel_id[0]);
-						user.registerWin(realPoints).then((response) => {
-							user.fetchMember().then((member) => {
-								if (channel && channel instanceof TextChannel) {
-									channel.send({
-										embeds: [
-											new EmbedBuilder().setAuthor({name: user.user.tag + " via TTHQ", iconURL: user.user.displayAvatarURL()}).setDescription(`Registered win of ${format(decoded.points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to <@${user.id}>'s balance` + toRewardString(response, false, false)).setTimestamp().setColor(Colors.Green).setFooter({text: "Action was taken automatically"}).toJSON()
-										]
-									}).catch(() => {});
-								}
-							});
-						});
+					const guilds = getGuildsForClan(decoded.clan);
+					for (const guild of guilds) {
+						const guildUser = getRawUser(guild, "");
+						if (!guildUser) continue;
+						if (guildUser.context.auto_points) {
+							const multiplier = db.getSettingProvider().getMultiplier(guildUser);
+							let realPoints = decoded.points;
+							if (multiplier) {
+								realPoints = Math.ceil(realPoints * multiplier.amount);
+							}
+							for (const targetClient of decoded.clients) {
+								const user = getRawUser(guild, targetClient.username);
+								if (!user) continue;
+								let channel = client.channels.cache.get(user.context.channel_id[0]);
+								user.registerWin(realPoints).then((response) => {
+									user.fetchMember().then((member) => {
+										if (channel && channel instanceof TextChannel) {
+											channel.send({
+												embeds: [
+													new EmbedBuilder().setAuthor({name: user.user.tag + " via BetterTT", iconURL: user.user.displayAvatarURL()}).setDescription(`Registered win of ${format(decoded.points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to <@${user.id}>'s balance` + toRewardString(response, false, false)).setTimestamp().setColor(Colors.Green).setFooter({text: "Action was taken automatically"}).toJSON()
+												]
+											}).catch(() => {});
+										}
+									});
+								});
+							}
+						}
 					}
 					s.writeHead(200);
 					s.write("OK");

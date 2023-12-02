@@ -8,6 +8,7 @@ export interface ServerSetting {
 	roles: "all" | "highest",
 	auto_points: boolean,
 	guild_id: string,
+	tag: string | null,
 	channel_id: Snowflake[],
 	log_channel_id: string,
 	update_channel_id: string,
@@ -24,6 +25,7 @@ export interface ServerSetting {
 
 const settings: ServerSetting[] = require("./settings.json");
 const indices: { [key: Snowflake]: number } = {};
+const clanCache: { [key: string]: Snowflake[] } = {};
 
 for (const i in settings) {
 	if (!settings[i].status) settings[i].status = 0;
@@ -33,7 +35,17 @@ for (const i in settings) {
 	if (!settings[i].claim_channel) settings[i].claim_channel = null;
 	if (!settings[i].claim_channel_description) settings[i].claim_channel_description = null;
 	if (!settings[i].factor_buttons) settings[i].factor_buttons = [];
+	if (!settings[i].tag) settings[i].tag = null;
 	indices[settings[i].guild_id] = parseInt(i);
+
+	let tag = settings[i].tag;
+	if (tag !== null) {
+		if (!clanCache.hasOwnProperty(tag)) {
+			clanCache[tag] = [];
+		}
+		clanCache[tag].push(settings[i].guild_id);
+	}
+
 	rewards.loadRewards(settings[i]);
 	for (const webhook of settings[i].webhooks) {
 		subscribe(webhook.clan, webhook.url);
@@ -41,7 +53,7 @@ for (const i in settings) {
 }
 
 export function getDefaults(): ServerSetting {
-	return {roles: "all", auto_points: false, guild_id: "", channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, webhooks: [], win_feed: null, claim_channel: null, claim_channel_description: null, factor_buttons: [], status: 0};
+	return {roles: "all", auto_points: false, guild_id: "", tag: null, channel_id: [], log_channel_id: "", update_channel_id: "", mod_roles: [], rewards: [], multiplier: null, webhooks: [], win_feed: null, claim_channel: null, claim_channel_description: null, factor_buttons: [], status: 0};
 }
 
 function updateSettings() {
@@ -96,4 +108,26 @@ export function setMultiplier(context: BotUserContext, amount: number, end: numb
 export function clearMultiplier(context: BotUserContext) {
 	context.context.multiplier = null;
 	updateSettings();
+}
+
+export function updateClanTag(context: ServerSetting, tag: string | null) {
+	if (context.tag === tag) return;
+	if (context.tag !== null && clanCache.hasOwnProperty(context.tag)) {
+		clanCache[context.tag].splice(clanCache[context.tag].indexOf(context.guild_id), 1);
+	}
+	context.tag = tag;
+	if (tag !== null) {
+		if (!clanCache.hasOwnProperty(tag)) {
+			clanCache[tag] = [];
+		}
+		clanCache[tag].push(context.guild_id);
+	}
+	updateSettings();
+}
+
+export function getGuildsForClan(clan: string): Snowflake[] {
+	if (clanCache.hasOwnProperty(clan)) {
+		return clanCache[clan];
+	}
+	return [];
 }

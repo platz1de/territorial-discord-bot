@@ -47,7 +47,6 @@ client.once(Events.ClientReady, async () => {
 	await registerCommand("MultiplierCommand");
 	await registerCommand("RoleRefreshCommand");
 	await registerCommand("ImportCommand");
-	await registerCommand("EndpointCommand");
 	await registerCommand("RemoveDataCommand");
 	await registerCommand("SetupCommand");
 	await registerCommand("ShortCommand");

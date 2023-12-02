@@ -14,11 +14,11 @@ export default {
 						{name: "Stats", value: `Tracking ${format(await context.getAllTimeEntryCount())} members totalling ${format(totalData.points)} points with ${format(totalData.wins)} wins`},
 						{name: "Commands", value: `Use </help:${getCommandId("help")}> to see all commands`},
 						{name: "Uptime", value: formatTime(Math.floor(process.uptime()))},
-						{name: "Source", value: "https://github.com/territorialHQ/point-system-bot"},
+						{name: "Source", value: "https://github.com/platz1de/territorial-discord-bot"},
 						{name: "TOS", value: "https://platz1de.github.io/TTHQ/ps-tos"},
 						{name: "Privacy Policy", value: "https://platz1de.github.io/TTHQ/ps-privacy"},
-						{name: "Support", value: "https://discord.gg/TtKJqYwfYe"}
-					).setFooter({text: "Made with ❤️ by the TTHQ Team"}).toJSON()
+						{name: "Support", value: "https://discord.gg/tvgfpeCGaD"}
+					).setFooter({text: "Made with ❤️ by platz1de"}).toJSON()
 			]
 		}).catch(console.error);
 	}
