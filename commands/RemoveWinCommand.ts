@@ -53,7 +53,7 @@ async function checkPointInput(points: number, user: User) {
 }
 
 export async function tryRemoveEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
-	if (!context.context.channel_id.includes(context.channel?.id || "0")) return true;
+	if (!context.context.channel_id.includes(context.channel?.id || "0")) return false;
 	let args = message.split(" ");
 	let target: Snowflake = context.id;
 	if (args[0]?.match(/<@!?\d+>/)) {
