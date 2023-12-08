@@ -72,14 +72,18 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 	if (!context.channel) return;
 	const collector = context.channel.createMessageComponentCollector({time: 60000});
 	collector.on("collect", async i => {
-		if (i instanceof ButtonInteraction) {
-			if (i.message.id !== msg.id || i.user.id !== context.user.id) return;
-			await i.deferUpdate();
-			const pages = ["profile", "progress", "chart"];
-			collector.stop();
-			await showProfileEmbed(context, target, pages.indexOf(i.customId));
-		} else {
-			return;
+		try {
+			if (i instanceof ButtonInteraction) {
+				if (i.message.id !== msg.id || i.user.id !== context.user.id) return;
+				await i.deferUpdate();
+				const pages = ["profile", "progress", "chart"];
+				collector.stop();
+				await showProfileEmbed(context, target, pages.indexOf(i.customId));
+			} else {
+				return;
+			}
+		} catch (e) {
+			console.log(e);
 		}
 	});
 
