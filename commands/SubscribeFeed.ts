@@ -3,6 +3,7 @@ import {BotUserContext} from "../util/BotUserContext";
 import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
 import {subscribe} from "../util/GameDataDistributor";
 import {setServerSetting} from "../BotSettingProvider";
+import {PointCommand} from "../PointManager";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("subscribefeed").setDescription("Subscribe to a clan win feed")
@@ -48,4 +49,4 @@ export default {
 		subscribe(clan, webhook);
 		setServerSetting(context.context);
 	}
-}
+} as PointCommand;

@@ -3,6 +3,7 @@ import {BotUserContext} from "../util/BotUserContext";
 import {createErrorEmbed} from "../util/EmbedUtil";
 import {setServerSetting} from "../BotSettingProvider";
 import {unsubscribe} from "../util/GameDataDistributor";
+import {PointCommand} from "../PointManager";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("unsubscribefeed").setDescription("UnSubscribe from a clan win feed")
@@ -51,4 +52,4 @@ export default {
 			}
 		});
 	}
-}
+} as PointCommand;

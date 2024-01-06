@@ -1,6 +1,6 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
 import {ServerSetting, setServerSetting, updateClanTag} from "../BotSettingProvider";
-import {client, getCommandId, rewards} from "../PointManager";
+import {client, getCommandId, PointCommand, rewards} from "../PointManager";
 import {BotUserContext} from "../util/BotUserContext";
 import {getOrSendMessage} from "../util/ClaimWinChannel";
 
@@ -35,7 +35,7 @@ export default {
 		}
 		await handleSetting(interaction, context, sub);
 	}
-}
+} as PointCommand;
 
 async function showSettingsEmbed(context: BotUserContext, page: number) {
 	let changes = [], isCritical = false;
@@ -358,7 +358,7 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 					type: type === 0 ? "points" : "wins",
 					count: amount
 				});
-				await context.reply(`Added <@&${roleId}> as a reward role for ${amount} ${type}!`);
+				await context.reply(`Added <@&${roleId}> as a reward role for ${amount} ${type === 0 ? "points" : "wins"}!`);
 				rewards.loadRewards(context.context);
 				break;
 			case "removerewardrole":
