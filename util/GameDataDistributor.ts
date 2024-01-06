@@ -1,6 +1,7 @@
 import {WebhookClient} from "discord.js";
 import {client} from "../PointManager";
 import {sendToFeed} from "./ClaimWinFeed";
+import {setClanScore, tryHandlePlayerData} from "./DataPredictions";
 
 let cache: CacheEntry[] = [];
 let subscribers: { [key: string]: string[] } = {};
@@ -17,6 +18,7 @@ export function addToCache(data: string) {
 	let message = JSON.parse(data).data;
 	let match = message.match(/^(\*?\*?)([\w\s]+)\s{4}(\d+)\s{4}(.*)\s\[(\d+)\.(\d{3,4})->(\d+)\.(\d{3,4})](\*?\*?)$/);
 	if (!match || match[1] !== match[9]) {
+		tryHandlePlayerData(message);
 		return;
 	}
 	clearCache();
@@ -32,6 +34,8 @@ export function addToCache(data: string) {
 	sendToSubscribers(match[4], msg);
 	sendToSubscribers("ALL", msg);
 	sendToFeed(match[4], msg, parseInt(match[3]) * (match[1].length === 2 ? 2 : 1)).catch(() => {});
+
+	setClanScore(match[4], match[7] + "." + match[8]);
 }
 
 function sendToSubscribers(clan: string, message: string) {

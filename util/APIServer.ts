@@ -6,6 +6,7 @@ import {Colors, EmbedBuilder, TextChannel} from "discord.js";
 import {format, toRewardString} from "./EmbedUtil";
 import {getRawUser} from "./BotUserContext";
 import {getGuildsForClan} from "../BotSettingProvider";
+import {getTTClanLeaderboard, getTTPlayerLeaderboard} from "./DataPredictions";
 
 const cert = readFileSync("public.key");
 
@@ -93,6 +94,27 @@ export const server = createServer(function (r, s) {
 				s.end();
 			}
 		});
+	} else if (r.url?.match(/^\/leaderboard\/(?:players|clans)\//) && r.method === "GET") {
+		let type = r.url.split("/")[2];
+		let query = r.url.substring(r.url.indexOf("?") + 1);
+		let page = 1;
+		let search = "";
+		for (const param of query.split("&")) {
+			const key = param.split("=")[0];
+			const value = param.split("=")[1];
+			if (key === "page") {
+				page = Math.max(1, parseInt(value));
+			} else if (key === "search") {
+				search = decodeURIComponent(value).toLowerCase();
+			}
+		}
+		s.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"});
+		s.write(JSON.stringify(type === "players" ? getTTPlayerLeaderboard(page, search) : getTTClanLeaderboard(page, search)));
+		s.end();
+	} else if (r.url === "/status/" && r.method === "GET") {
+		s.writeHead(200, {"Content-Type": "application/text", "Access-Control-Allow-Origin": "*"});
+		s.write("OK");
+		s.end();
 	} else {
 		s.writeHead(405);
 		s.write("Method not allowed");
