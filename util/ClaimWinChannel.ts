@@ -79,6 +79,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		if (interaction.customId.startsWith("claim_channel_factor_")) {
 			factorId = interaction.customId.substring(21);
 		}
+		let clanTag = clan;
 		interaction.reply({
 			embeds: [
 				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("Please select a game to claim the win for!").setColor(Colors.Blue).setTimestamp().toJSON()
@@ -86,7 +87,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 			components: [
 				new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 					new StringSelectMenuBuilder().setCustomId("claim_channel").setPlaceholder("Select a game").addOptions(choices.map((choice) => {
-						return {label: choice.contest ? "Contest with " + choice.points + " points on " + choice.map : choice.points + " points on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.points}-${factorId}-` + Math.random().toString(10)}
+						return {label: choice.contest ? "Contest with " + choice.playerCount + " players on " + choice.map : choice.teamCount + " Teams with" + choice.playerCount + " players on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.clans[clanTag]}-${factorId}-` + Math.random().toString(10)}
 					}))
 				)
 			],
