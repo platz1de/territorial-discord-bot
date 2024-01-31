@@ -17,31 +17,32 @@ interface CacheEntry {
 
 export function addToCache(data: string) {
 	let message = JSON.parse(data).data;
-	let match = message.match(/^(\*?\*?)Game\sMode:\s(\d)\sTeams\s{3}Map:\s([\w\s]+)\s{3}Player\sCount:\s(\d+)\s{3}Result:((?:\s\[[^\]]*]:\s\d+\.\d+->\d+\.\d+)+)(\*?\*?)$/);
-	if (!match || match[1] !== match[6]) {
+	let match = message.match(/^```Time:\s{9}.*\sGame\sMode:\s{4}(\d)\sTeams((?:,\sContest)?)\sMap:\s{10}([\w\s]+)\sPlayer Count:\s(\d+)\sTeam\sT:\s{7}(\d+)\sRes:((?:\s{4}\[[^\]]+]:[\s.+=,T\d]+\(\s*\d+\.\d+%\))+)```$/);
+	if (!match) {
 		tryHandlePlayerData(message);
 		return;
 	}
 	clearCache();
-	let clans = match[5].matchAll(/\[([^\]]*)]:\s(\d+\.\d+)->(\d+\.\d+)/g);
+	let clans = match[6].matchAll(/\s{3}\[([^\]]+)]:\s*(\d*\.\d*)\s*\+\s*\d*\.\d*\s*=\s*(\d*\.\d*),\s*T\s*=\s*(\d*)\s*\(\s*\d*\d\.\d*%\)/g);
 	let winClans: { [key: string]: number } = {};
 	for (const clan of clans) {
-		winClans[clan[1]] = 0; //hopefully we get the result for each clan soon
+		const points = Math.round((parseInt(clan[4]) * (match[2] === ", Contest" ? 2 : 1) * parseInt(match[4]) / parseInt(match[5])) * 100) / 100;
+		winClans[clan[1]] = points;
 		setClanScore(clan[1], clan[3]);
+
+		const msg = `**${clan[1]}**    ${match[1]} Team  ${match[3]}    ${points}  [${clan[2]}->${clan[3]}]`;
+		sendToSubscribers(clan[1], msg);
+		sendToSubscribers("ALL", msg);
+		sendToFeed(clan[1], msg, points).catch(() => {});
 	}
 	cache.push({
 		clans: winClans,
-		teamCount: parseInt(match[2]),
+		teamCount: parseInt(match[1]),
 		map: match[3],
 		playerCount: parseInt(match[4]),
-		contest: match[1].length === 2,
+		contest: match[2] === ", Contest",
 		timestamp: Date.now()
 	});
-
-	//const msg = `**${match[4]}**    ${match[2]}    ${match[1].length === 2 ? "2 x " : ""}${match[3]}  [${match[5]}.${match[6]}->${match[7]}.${match[8]}]`;
-	//sendToSubscribers(match[4], msg);
-	//sendToSubscribers("ALL", msg);
-	//sendToFeed(match[4], msg, parseInt(match[3]) * (match[1].length === 2 ? 2 : 1)).catch(() => {});
 }
 
 function sendToSubscribers(clan: string, message: string) {
