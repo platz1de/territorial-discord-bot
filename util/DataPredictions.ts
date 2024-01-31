@@ -12,7 +12,7 @@ function checkData() {
 		const changeDate = data[0].substring(17);
 		if (lastUpdate === changeDate) return;
 		clans = [];
-		for (let i = 4; i < data.length; i++) {
+		for (let i = 6; i < data.length; i++) {
 			const entry = data[i].split(", ");
 			if (entry.length < 3) continue;
 			clans.push({
@@ -24,7 +24,7 @@ function checkData() {
 		fetch("https://territorial.io/players").then(r => r.text()).then(r => {
 			const data = r.split("\n");
 			players = [];
-			for (let i = 4; i < data.length; i++) {
+			for (let i = 6; i < data.length; i++) {
 				const entry = data[i].split(", ");
 				if (entry.length < 4) continue;
 				players.push({
