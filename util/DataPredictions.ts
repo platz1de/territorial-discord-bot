@@ -9,7 +9,7 @@ checkData();
 function checkData() {
 	fetch("https://territorial.io/clans").then(r => r.text()).then(r => {
 		const data = r.split("\n");
-		const changeDate = data[0].substring(17);
+		const changeDate = data[2];
 		if (lastUpdate === changeDate) return;
 		clans = [];
 		for (let i = 6; i < data.length; i++) {
