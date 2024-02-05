@@ -17,7 +17,7 @@ interface CacheEntry {
 
 export function addToCache(data: string) {
 	let message = JSON.parse(data).data;
-	let match = message.match(/^```Time:\s{9}.*\sGame\sMode:\s{4}(\d)\sTeams((?:,\sContest)?)\sMap:\s{10}([\w\s]+)\sPlayer Count:\s(\d+)\sTeam\sT:\s{7}(\d+)\sRes:((?:\s{4}\[[^\]]+]:[\s.+=,T\d]+\(\s*\d+\.\d+%\))+)```$/);
+	let match = message.match(/^```Time:\s{9}.*\sGame\sMode:\s{4}(\d)\sTeams((?:,\sContest)?)\sMap:\s{10}([\w\s]+)\sPlayer Count:\s(\d+)\sTeam\sT:\s{7}(\d+)\sPercentage\sL:\s\d*\.\d*\sRes:((?:\s{4}\[[^\]]+]:[\s.+=,T\d]+\(\s*\d+\.\d+%\))+)```$/);
 	if (!match) {
 		tryHandlePlayerData(message);
 		return;
