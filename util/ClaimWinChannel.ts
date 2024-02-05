@@ -62,7 +62,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("This serer does not have a clan tag set!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
 				ephemeral: true
-			});
+			}).catch(() => {});
 			return;
 		}
 		let choices = getCacheForClan(clan);
@@ -72,7 +72,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("There were no games won recently!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
 				ephemeral: true
-			});
+			}).catch(() => {});
 			return;
 		}
 		let factorId = "n";
@@ -92,7 +92,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 				)
 			],
 			ephemeral: true
-		});
+		}).catch(() => {});
 	} else if (interaction.isStringSelectMenu() && interaction.member instanceof GuildMember) {
 		if (interaction.customId !== "claim_channel") return;
 		const context = getUser(interaction.member, interaction);
@@ -118,7 +118,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(`Registered win of ${format(points)} ${context.context.multiplier ? `\`x ${context.context.multiplier.amount} (multiplier)\` ` : ``}points to your balance` + toRewardString(response, false, false)).setColor(Colors.Green).setTimestamp().toJSON()
 				],
 				ephemeral: true
-			});
+			}).catch(() => {});
 			let channel = client.channels.cache.get(context.context.channel_id[0]);
 			if (channel && channel instanceof TextChannel) {
 				channel.send({

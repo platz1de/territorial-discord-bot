@@ -64,7 +64,7 @@ export async function handleFeedInteraction(interaction: Interaction) {
 				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("You have already claimed this win!").setColor(Colors.Red).setTimestamp().toJSON()
 			],
 			ephemeral: true
-		});
+		}).catch(() => {});
 		return;
 	}
 	let points = cache.points;
