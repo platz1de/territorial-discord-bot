@@ -25,7 +25,8 @@ export default {
 				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("Please select the feed you want to unsubscribe from").setTimestamp().toJSON()
 			],
 			components: rows
-		});
+		}).catch(() => {});
+		if (!msg) return;
 
 		if (!context.channel) return;
 		const collector = context.channel.createMessageComponentCollector({time: 120000});
@@ -42,7 +43,7 @@ export default {
 					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(`Successfully unsubscribed from the clan win feed for \`${webhook.clan}\` in <#${webhook.channel}>!`).setTimestamp().toJSON()
 				],
 				components: []
-			});
+			}).catch(() => {});
 		});
 
 		collector.on("end", async (collected, reason) => {
