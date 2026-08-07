@@ -1,8 +1,9 @@
 import {Guild, GuildMember, Message, Snowflake} from "discord.js";
-import {client, rewards} from "../PointManager";
-import {getServerContext, ServerSetting} from "../BotSettingProvider";
-import {RewardAnswer} from "./RewardManager";
-import {BaseUserContext, InteractionTypes} from "./BaseUserContext";
+import {client, rewards} from "../PointManager.js";
+import {getServerContext, ServerSetting} from "../BotSettingProvider.js";
+import {RewardAnswer} from "./RewardManager.js";
+import {BaseUserContext, InteractionTypes} from "./BaseUserContext.js";
+export type  {MultiplierSetting} from "../BotSettingProvider.js";
 
 export class BotUserContext extends BaseUserContext {
 	context: ServerSetting;

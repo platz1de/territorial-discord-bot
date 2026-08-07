@@ -1,8 +1,8 @@
 import {AttachmentBuilder, ChatInputCommandInteraction, SlashCommandBuilder} from "discord.js";
-import {config, PointCommand} from "../PointManager";
-import {createErrorEmbed} from "../util/EmbedUtil";
-import {BotUserContext} from "../util/BotUserContext";
-import {renderClanChart} from "../util/GraphRenderer";
+import {config, PointCommand} from "../PointManager.js";
+import {createErrorEmbed} from "../util/EmbedUtil.js";
+import {BotUserContext} from "../util/BotUserContext.js";
+import {renderClanChart} from "../util/GraphRenderer.js";
 import {parse} from "date-fns";
 
 export default {

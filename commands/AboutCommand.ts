@@ -1,7 +1,7 @@
 import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
-import {client, GenericCommand, getCommandId} from "../PointManager";
-import {format, formatTime} from "../util/EmbedUtil";
-import {BaseUserContext} from "../util/BaseUserContext";
+import {client, GenericCommand, getCommandId} from "../PointManager.js";
+import {format, formatTime} from "../util/EmbedUtil.js";
+import {BaseUserContext} from "../util/BaseUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("about").setDescription("See infos about the bot"),

@@ -1,7 +1,7 @@
 import {Colors, Snowflake} from "discord.js";
-import {logAction} from "../PointManager";
-import {ServerSetting} from "../BotSettingProvider";
-import {BotUserContext} from "./BotUserContext";
+import {logAction} from "../PointManager.js";
+import {ServerSetting} from "../BotSettingProvider.js";
+import {BotUserContext} from "./BotUserContext.js";
 
 let rewards: { [key: string]: Reward[] } = {};
 let hierarchy: { [key: string]: number[] } = {};

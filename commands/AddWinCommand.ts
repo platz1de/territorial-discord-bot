@@ -1,8 +1,8 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
-import {db, logAction, PointCommand} from "../PointManager";
-import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil";
-import {normalizeChanges, RewardAnswer} from "../util/RewardManager";
-import {BotUserContext, getRawUser} from "../util/BotUserContext";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, MessageFlags, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
+import {db, logAction, PointCommand} from "../PointManager.js";
+import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil.js";
+import {normalizeChanges, RewardAnswer} from "../util/RewardManager.js";
+import {BotUserContext, MultiplierSetting, getRawUser} from "../util/BotUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("addwin").setDescription("Add win to a member")
@@ -34,7 +34,7 @@ export default {
 	}
 } as PointCommand;
 
-async function showAddWinEmbed(context: BotUserContext, points: number, targets: Snowflake[], rewards: RewardAnswer[][], multiplier?: { amount: number }) {
+async function showAddWinEmbed(context: BotUserContext, points: number, targets: Snowflake[], rewards: RewardAnswer[][], multiplier: MultiplierSetting | null) {
 	let memberString;
 	if (targets.length === 1) {
 		memberString = `${context.user.id === targets[0] ? "your" : `<@${targets[0]}>'s`} balance${toRewardString(rewards[0], context.user.id === targets[0], false)}`;
@@ -74,7 +74,7 @@ async function showAddWinEmbed(context: BotUserContext, points: number, targets:
 					newPoints *= factor;
 				} else points = NaN;
 			}
-			await i2.deferReply({ephemeral: true});
+			await i2.deferReply({flags: MessageFlags.Ephemeral});
 			const err = await checkPointInput(newPoints, i2.user);
 			if (err) {
 				await i2.editReply(err);

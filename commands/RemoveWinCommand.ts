@@ -1,8 +1,8 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder, Snowflake, User} from "discord.js";
-import {db, logAction, PointCommand} from "../PointManager";
-import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil";
-import {RewardAnswer} from "../util/RewardManager";
-import {BotUserContext, getRawUser} from "../util/BotUserContext";
+import {db, logAction, PointCommand} from "../PointManager.js";
+import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil.js";
+import {RewardAnswer} from "../util/RewardManager.js";
+import {BotUserContext, MultiplierSetting, getRawUser} from "../util/BotUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("removewin").setDescription("Remove win from a member")
@@ -34,7 +34,7 @@ export default {
 	}
 } as PointCommand;
 
-async function showRemoveWinEmbed(context: BotUserContext, points: number, target: Snowflake, rewards: RewardAnswer[], multiplier?: { amount: number }) {
+async function showRemoveWinEmbed(context: BotUserContext, points: number, target: Snowflake, rewards: RewardAnswer[], multiplier: MultiplierSetting | null) {
 	await context.reply({
 		embeds: [
 			new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(`Removed win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points from ${context.user.id === target ? "your" : `<@${target}>'s`} balance` + toRewardString(rewards, context.user.id === target, false)).setTimestamp().setColor(context.user.id === target ? Colors.Red : Colors.Yellow).toJSON()

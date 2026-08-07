@@ -1,9 +1,9 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedBuilder, GuildMember, Interaction, Message, NewsChannel, StringSelectMenuBuilder, TextChannel} from "discord.js";
-import {ServerSetting} from "../BotSettingProvider";
-import {BotUserContext, getUser} from "./BotUserContext";
-import {format, toRewardString} from "./EmbedUtil";
-import {client} from "../PointManager";
-import {getCacheForClan} from "./GameDataDistributor";
+import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedBuilder, GuildMember, Interaction, Message, MessageFlags, NewsChannel, StringSelectMenuBuilder, TextChannel} from "discord.js";
+import {ServerSetting} from "../BotSettingProvider.js";
+import {BotUserContext, getUser} from "./BotUserContext.js";
+import {format, toRewardString} from "./EmbedUtil.js";
+import {client} from "../PointManager.js";
+import {getCacheForClan} from "./GameDataDistributor.js";
 
 export async function getOrSendMessage(context: ServerSetting) {
 	if (!context.claim_channel) return;
@@ -61,7 +61,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 				embeds: [
 					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("This server does not have a clan tag set!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
-				ephemeral: true
+				flags: MessageFlags.Ephemeral
 			}).catch(() => {});
 			return;
 		}
@@ -71,7 +71,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 				embeds: [
 					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("There were no games won recently!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
-				ephemeral: true
+				flags: MessageFlags.Ephemeral
 			}).catch(() => {});
 			return;
 		}
@@ -87,11 +87,11 @@ export async function handleChannelInteraction(interaction: Interaction) {
 			components: [
 				new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 					new StringSelectMenuBuilder().setCustomId("claim_channel").setPlaceholder("Select a game").addOptions(choices.map((choice) => {
-						return {label: choice.contest ? "Contest with " + choice.playerCount + " players on " + choice.map : "Clan game with " + choice.playerCount + " players on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.points}-${factorId}-` + Math.random().toString(10)}
+						return {label: choice.contest ? "Contest with " + choice.playerCount + " players on " + choice.map : "Clan game with " + choice.playerCount + " players on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.gainPoints}-${factorId}-` + Math.random().toString(10)}
 					}))
 				)
 			],
-			ephemeral: true
+			flags: MessageFlags.Ephemeral
 		}).catch(() => {});
 	} else if (interaction.isStringSelectMenu() && interaction.member instanceof GuildMember) {
 		if (interaction.customId !== "claim_channel") return;
@@ -117,7 +117,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 				embeds: [
 					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(`Registered win of ${format(points)} ${context.context.multiplier ? `\`x ${context.context.multiplier.amount} (multiplier)\` ` : ``}points to your balance` + toRewardString(response, false, false)).setColor(Colors.Green).setTimestamp().toJSON()
 				],
-				ephemeral: true
+				flags: MessageFlags.Ephemeral
 			}).catch(() => {});
 			let channel = client.channels.cache.get(context.context.channel_id[0]);
 			if (channel && channel instanceof TextChannel) {

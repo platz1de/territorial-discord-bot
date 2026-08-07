@@ -1,7 +1,7 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {Command, db, logAction, PointCommand} from "../PointManager";
-import {BotUserContext} from "../util/BotUserContext";
-import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
+import {Command, db, logAction, PointCommand} from "../PointManager.js";
+import {MultiplierSetting, BotUserContext} from "../util/BotUserContext.js";
+import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("multiplier").setDescription("Modify the current multiplier")
@@ -42,7 +42,7 @@ export default {
 					}
 					processedEnd = date.getTime();
 				}
-				await db.getSettingProvider().setMultiplier(context, multiplier, processedEnd, description);
+				await db.getSettingProvider().setMultiplier(context, { amount: multiplier, end: processedEnd, description: description } as MultiplierSetting );
 				logAction(context, `Multiplier set to ${multiplier}x`, Colors.Yellow);
 				await context.reply(createConfirmationEmbed(context.user, `Set multiplier to ${multiplier}x with description \`${description}\`${processedEnd ? ` ending at <t:${Math.min(processedEnd / 1000)}>` : ""}`));
 				break;
@@ -64,7 +64,7 @@ export default {
 					return;
 				}
 				currentMultiplier.end = date.getTime();
-				db.getSettingProvider().setMultiplier(context, currentMultiplier.end, currentMultiplier.description);
+				db.getSettingProvider().setMultiplier(context, currentMultiplier );
 				logAction(context, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
 				await context.reply(createConfirmationEmbed(context.user, `Set multiplier end date to <t:${Math.min(date.getTime() / 1000)}>`));
 				break;

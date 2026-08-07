@@ -1,6 +1,6 @@
 import {ChartJSNodeCanvas} from "chartjs-node-canvas";
 import {TimeUnit} from "chart.js";
-import {enGB} from "date-fns/locale";
+import {enGB} from "date-fns/locale/en-GB";
 
 const width = 500;
 const height = 300;

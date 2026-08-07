@@ -1,6 +1,6 @@
 import {BaseMessageOptions, ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageContextMenuCommandInteraction, MessagePayload, Snowflake, StringSelectMenuInteraction, TextBasedChannel, User, UserContextMenuCommandInteraction} from "discord.js";
 import {Database} from "sqlite3";
-import {client, db} from "../PointManager";
+import {client, db} from "../PointManager.js";
 
 export type InteractionTypes = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction | MessageContextMenuCommandInteraction | UserContextMenuCommandInteraction;
 

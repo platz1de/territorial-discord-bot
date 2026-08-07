@@ -1,7 +1,7 @@
 import {ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {PointCommand, rewards} from "../PointManager";
-import {Reward} from "../util/RewardManager";
-import {BotUserContext, getRawUser} from "../util/BotUserContext";
+import {PointCommand, rewards} from "../PointManager.js";
+import {Reward} from "../util/RewardManager.js";
+import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("rolerefresh").setDescription("Refresh the role rewards")

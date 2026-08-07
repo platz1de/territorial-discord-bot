@@ -1,6 +1,6 @@
 import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
-import {client, GenericCommand, getCommandId} from "../PointManager";
-import {BaseUserContext} from "../util/BaseUserContext";
+import {client, GenericCommand, getCommandId} from "../PointManager.js";
+import {BaseUserContext} from "../util/BaseUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("help").setDescription("See a command list"),

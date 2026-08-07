@@ -1,7 +1,7 @@
-import {getDefaults, ServerSetting, setServerSetting} from "../BotSettingProvider";
+import {getDefaults, ServerSetting, setServerSetting} from "../BotSettingProvider.js";
 import {ChatInputCommandInteraction, Message, PermissionFlagsBits} from "discord.js";
-import {getCommandId, rewards} from "../PointManager";
-import {BaseUserContext} from "./BaseUserContext";
+import {getCommandId, rewards} from "../PointManager.js";
+import {BaseUserContext} from "./BaseUserContext.js";
 
 interface SetupDialog {
 	data: ServerSetting,

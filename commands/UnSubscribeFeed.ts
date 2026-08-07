@@ -1,9 +1,9 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, Snowflake} from "discord.js";
-import {BotUserContext} from "../util/BotUserContext";
-import {createErrorEmbed} from "../util/EmbedUtil";
-import {setServerSetting} from "../BotSettingProvider";
-import {unsubscribe} from "../util/GameDataDistributor";
-import {PointCommand} from "../PointManager";
+import {BotUserContext} from "../util/BotUserContext.js";
+import {createErrorEmbed} from "../util/EmbedUtil.js";
+import {setServerSetting} from "../BotSettingProvider.js";
+import {unsubscribe} from "../util/GameDataDistributor.js";
+import {PointCommand} from "../PointManager.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("unsubscribefeed").setDescription("UnSubscribe from a clan win feed")

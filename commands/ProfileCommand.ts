@@ -1,8 +1,8 @@
-import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, InteractionReplyOptions, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
-import {PointCommand, rewards} from "../PointManager";
-import {format} from "../util/EmbedUtil";
-import {BotUserContext, getRawUser} from "../util/BotUserContext";
-import {renderDualChart} from "../util/GraphRenderer";
+import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, InteractionReplyOptions, Message, MessageFlags, SlashCommandBuilder, Snowflake, User} from "discord.js";
+import {PointCommand, rewards} from "../PointManager.js";
+import {format} from "../util/EmbedUtil.js";
+import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
+import {renderDualChart} from "../util/GraphRenderer.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
@@ -62,7 +62,7 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 
 	let msg: Message;
 	if (ephemeral && context.base && !(context.base instanceof Message)) {
-		content.ephemeral = true;
+		content.flags ||= MessageFlags.Ephemeral;
 		let response = await context.base.reply(content);
 		msg = await response.fetch();
 	} else {

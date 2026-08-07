@@ -1,13 +1,16 @@
 {
   "name": "point-manager",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "PointManager.ts",
+  "type": "module",
   "dependencies": {
-    "discord.js": "^14.14.1",
-    "chartjs-node-canvas": "^4.1.6",
-    "date-fns": "^2.30.0",
-    "sqlite3": "^5.1.6",
-	"jsonwebtoken": "^9.0.2",
-	"@types/jsonwebtoken": "^9.0.5"
+    "@types/node": "25.9.5",
+    "chartjs-node-canvas": "5.0.0",
+    "date-fns": "4.4.0",
+    "discord.js": "14.27.0",
+    "sqlite3": "6.0.1"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
   }
 }

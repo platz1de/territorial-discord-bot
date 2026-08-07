@@ -1,8 +1,14 @@
 import * as fs from "fs";
 import {Snowflake} from "discord.js";
-import {rewards} from "./PointManager";
-import {BotUserContext} from "./util/BotUserContext";
-import {subscribe} from "./util/GameDataDistributor";
+import {rewards} from "./PointManager.js";
+import {BotUserContext} from "./util/BotUserContext.js";
+import {subscribe} from "./util/GameDataDistributor.js";
+
+export interface MultiplierSetting {
+	amount: number,
+	end: number | null,
+	description: string
+};
 
 export interface ServerSetting {
 	roles: "all" | "highest",
@@ -14,7 +20,7 @@ export interface ServerSetting {
 	update_channel_id: string,
 	mod_roles: Snowflake[],
 	rewards: { role_id: string, type: "points" | "wins", count: number }[],
-	multiplier: { amount: number, end: number | null, description: string } | null,
+	multiplier: MultiplierSetting | null,
 	webhooks: { clan: string, url: string, channel: Snowflake }[],
 	win_feed: Snowflake | null,
 	claim_channel: Snowflake | null,
@@ -23,7 +29,9 @@ export interface ServerSetting {
 	status: number // first bit: 1 = points imported from 3rd party
 }
 
-const settings: ServerSetting[] = require("./settings.json");
+//const settings: ServerSetting[] = require("./settings.json");
+import rawSettings from "./settings.json" with { type: "json" };
+const settings = rawSettings as ServerSetting[];
 const indices: { [key: Snowflake]: number } = {};
 const clanCache: { [key: string]: Snowflake[] } = {};
 
@@ -92,7 +100,7 @@ export function removeServerSetting(guild: Snowflake) {
 	}
 }
 
-export function getMultiplier(context: BotUserContext): { amount: number, end: number | null, description: string } | null {
+export function getMultiplier(context: BotUserContext): MultiplierSetting | null {
 	if (context.context.multiplier === null) return null;
 	if (context.context.multiplier.end !== null && context.context.multiplier.end < Date.now()) {
 		context.context.multiplier = null;
@@ -101,8 +109,8 @@ export function getMultiplier(context: BotUserContext): { amount: number, end: n
 	return context.context.multiplier;
 }
 
-export function setMultiplier(context: BotUserContext, amount: number, end: number | null, description: string) {
-	context.context.multiplier = {amount, end, description};
+export function setMultiplier(context: BotUserContext, multiplier: MultiplierSetting ) {
+	context.context.multiplier = multiplier;
 	updateSettings();
 }
 

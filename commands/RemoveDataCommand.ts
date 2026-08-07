@@ -1,6 +1,6 @@
 import {SlashCommandBuilder} from "discord.js";
-import {GenericCommand} from "../PointManager";
-import {BaseUserContext} from "../util/BaseUserContext";
+import {GenericCommand} from "../PointManager.js";
+import {BaseUserContext} from "../util/BaseUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("removedata").setDescription("Remove ALL your data from the bot"),

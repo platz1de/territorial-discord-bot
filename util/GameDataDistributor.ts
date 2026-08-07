@@ -1,42 +1,27 @@
 import {WebhookClient} from "discord.js";
-import {client} from "../PointManager";
-import {sendToFeed} from "./ClaimWinFeed";
-import {setClanScore, tryHandlePlayerData} from "./DataPredictions";
+import {client} from "../PointManager.js";
+import {sendToFeed} from "./ClaimWinFeed.js";
+import {ClanGame} from "./ClanGame.js";
 
-let cache: CacheEntry[] = [];
+let cache: ClanGame[] = [];
 let subscribers: { [key: string]: string[] } = {};
-
-interface CacheEntry {
-	clan: string;
-	points: number;
-	map: string;
-	playerCount: number;
-	contest: boolean;
-	timestamp: number;
-}
 
 export function addToCache(data: string) {
 	let message = JSON.parse(data).data;
-	let match = message.match(/^```\sTime:\s{10}.*\sContest:\s{7}(Yes|No)\sMap:\s{11}([^\n]+)\sPlayer Count:\s{2}(\d+)\sWinning\sClan:\s{2}\[(.*)]\sPrev.\sPoints:\s{1,2}([\d.]+)\sGain:\s{10}([\d.]+)\sCurr.\sPoints:\s{1,2}([\d.]+)\sPayout:[^\n]+\sClan Winners:[^\n]+```$/);
-	if (!match) {
-		tryHandlePlayerData(message);
-		return;
-	}
-	clearCache();
-	setClanScore(match[4], match[7]);
 
-	const msg = `**${match[4]}**    ${match[2]}    ${match[1] === "Yes" ? "2 x " : ""}${parseInt(match[3])}  [${match[5]}->${match[7]}]`;
-	sendToSubscribers(match[4], msg);
+	//Parse Game Result
+	const result: ClanGame = new ClanGame( message );
+
+	//Check that the object has been initialised to non default values
+	if ( result.isDefault ) return;
+	clearCache();
+
+	const msg = `**${result.clan}**    ${result.map}    ${result.contest ? "2 x " : ""}${result.playerCount}  [${result.prevClanPoints}->${result.currClanPoints}]`;
+	sendToSubscribers(result.clan, msg);
 	sendToSubscribers("ALL", msg);
-	sendToFeed(match[4], msg, parseInt(match[3]) * (match[1] === "Yes" ? 2 : 1)).catch(() => {});
-	cache.push({
-		clan: match[4],
-		points: parseInt(match[3]),
-		map: match[2],
-		playerCount: parseInt(match[3]),
-		contest: match[1] === "Yes",
-		timestamp: Date.now()
-	});
+	sendToFeed(result.clan, msg, result.playerCount * (result.contest ? 2 : 1), result).catch(() => {});
+
+	cache.push(result);
 }
 
 function sendToSubscribers(clan: string, message: string) {
@@ -65,7 +50,7 @@ export function unsubscribe(clan: string, webhook: string) {
 	}
 }
 
-export function getCacheForClan(clan: string): CacheEntry[] {
+export function getCacheForClan(clan: string): ClanGame[] {
 	return cache.filter(entry => entry.clan === clan);
 }
 

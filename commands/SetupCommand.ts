@@ -1,9 +1,9 @@
 import {PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {GenericCommand} from "../PointManager";
-import {BotUserContext} from "../util/BotUserContext";
-import {BaseUserContext} from "../util/BaseUserContext";
-import {createErrorEmbed} from "../util/EmbedUtil";
-import {startDialog} from "../util/SetupDisalogUtil";
+import {GenericCommand} from "../PointManager.js";
+import {BotUserContext} from "../util/BotUserContext.js";
+import {BaseUserContext} from "../util/BaseUserContext.js";
+import {createErrorEmbed} from "../util/EmbedUtil.js";
+import {startDialog} from "../util/SetupDisalogUtil.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("setup").setDescription("Start the setup assistant")

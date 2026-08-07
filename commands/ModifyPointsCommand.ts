@@ -1,7 +1,7 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, User} from "discord.js";
-import {logAction, PointCommand} from "../PointManager";
-import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil";
-import {BotUserContext, getRawUser} from "../util/BotUserContext";
+import {logAction, PointCommand} from "../PointManager.js";
+import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil.js";
+import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("modifypoints").setDescription("Modify points of a member")

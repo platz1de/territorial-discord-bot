@@ -1,9 +1,9 @@
 import {ChatInputCommandInteraction, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
-import {BotUserContext} from "../util/BotUserContext";
-import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil";
-import {subscribe} from "../util/GameDataDistributor";
-import {setServerSetting} from "../BotSettingProvider";
-import {PointCommand} from "../PointManager";
+import {BotUserContext} from "../util/BotUserContext.js";
+import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil.js";
+import {subscribe} from "../util/GameDataDistributor.js";
+import {setServerSetting} from "../BotSettingProvider.js";
+import {PointCommand} from "../PointManager.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("subscribefeed").setDescription("Subscribe to a clan win feed")

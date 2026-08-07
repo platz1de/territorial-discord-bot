@@ -1,8 +1,8 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
-import {ServerSetting, setServerSetting, updateClanTag} from "../BotSettingProvider";
-import {client, getCommandId, PointCommand, rewards} from "../PointManager";
-import {BotUserContext} from "../util/BotUserContext";
-import {getOrSendMessage} from "../util/ClaimWinChannel";
+import {ServerSetting, setServerSetting, updateClanTag} from "../BotSettingProvider.js";
+import {client, getCommandId, PointCommand, rewards} from "../PointManager.js";
+import {BotUserContext} from "../util/BotUserContext.js";
+import {getOrSendMessage} from "../util/ClaimWinChannel.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings")
@@ -110,7 +110,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(isCritical ? Colors.Red : Colors.Yellow).toJSON());
 	}
 	embeds.push(new EmbedBuilder().setAuthor({name: context.guild.name, iconURL: context.guild.iconURL() || undefined})
-		.setTitle(["Point Management Settings", "Role Settings", "Channel Settings", "Win Claiming Settings"][page])
+		.setTitle(["Point Management Settings", "Win Claiming Settings", "Channel Settings", "Role Settings"][page])
 		.addFields(getSettingsFields(context.context, page))
 		.setColor(Colors.Blurple).setFooter({
 			text: "Use buttons below to navigate"
@@ -120,9 +120,9 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		components: [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder().setCustomId("settings:p").setLabel("Points").setStyle(page === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-				new ButtonBuilder().setCustomId("settings:m").setLabel("Win Claiming").setStyle(page === 3 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-				new ButtonBuilder().setCustomId("settings:r").setLabel("Roles").setStyle(page === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-				new ButtonBuilder().setCustomId("settings:c").setLabel("Channels").setStyle(page === 2 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+				new ButtonBuilder().setCustomId("settings:w").setLabel("Win Claiming").setStyle(page === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+				new ButtonBuilder().setCustomId("settings:c").setLabel("Channels").setStyle(page === 2 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+				new ButtonBuilder().setCustomId("settings:r").setLabel("Roles").setStyle(page === 3 ? ButtonStyle.Primary : ButtonStyle.Secondary)
 			)
 		]
 	});
@@ -133,7 +133,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== context.user.id) return;
 		await i.deferUpdate();
 		collector.stop();
-		await showSettingsEmbed(context, ["settings:p", "settings:r", "settings:c", "settings:m"].indexOf(i.customId));
+		await showSettingsEmbed(context, ["settings:p", "settings:w", "settings:c", "settings:r"].indexOf(i.customId));
 	});
 
 	collector.on("end", async (collected, reason) => {
@@ -161,7 +161,7 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 					value: (context.multiplier ? `\`x ${context.multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>`
 				}
 			];
-		case 3:
+		case 1:
 			return [
 				{
 					name: "📝 Win Feed",
@@ -176,7 +176,7 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 					value: `${context.factor_buttons.length === 0 ? "None" : context.factor_buttons.map((f) => `${f.name}: ${f.factor}\n`).join("")}\nAllows you to add multiple claiming methods for win feeds / claim channels. E.g. you can have one button for 100% and one for 50% of the points (note that the requirements your server puts aren't verified).\nEdit: </settings addfactor:${getCommandId("settings")}> & </settings removefactor:${getCommandId("settings")}>`
 				}
 			];
-		case 1:
+		case 2:
 			return [
 				{
 					name: "👑 Win Channels",
@@ -195,7 +195,7 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 					value: `${context.webhooks.length} feeds\nFeeds allow you to get yours or all clan wins posted in a channel.\nEdit: </subscribefeed:${getCommandId("subscribefeed")}> & </unsubscribefeed:${getCommandId("unsubscribefeed")}>`
 				}
 			];
-		case 2:
+		case 3:
 			return [
 				{
 					name: "🛠 Mod Roles",

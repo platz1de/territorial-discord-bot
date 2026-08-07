@@ -1,17 +1,19 @@
 import {Client, Collection, ColorResolvable, ContextMenuCommandBuilder, EmbedBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, TextChannel, ApplicationCommandType} from "discord.js";
-import rewards = require("./util/RewardManager");
-import db = require("./db/DataBaseManager");
-import {sendUninitializedError} from "./util/EmbedUtil";
-import {handleDialog, hasDialog} from "./util/SetupDisalogUtil";
-import {BotUserContext, getRawUser, getUser} from "./util/BotUserContext";
-import {removeServerSetting} from "./BotSettingProvider";
-import {BaseUserContext} from "./util/BaseUserContext";
-import {handleMessage} from "./util/EntryMessageHandler";
-import {handleFeedInteraction} from "./util/ClaimWinFeed";
-import {handleChannelInteraction} from "./util/ClaimWinChannel";
-import {showProfileEmbed} from "./commands/ProfileCommand";
+import * as rewards from "./util/RewardManager.js";
+import * as db from "./db/DataBaseManager.js";
+import {sendUninitializedError} from "./util/EmbedUtil.js";
+import {handleDialog, hasDialog} from "./util/SetupDisalogUtil.js";
+import {BotUserContext, getUser} from "./util/BotUserContext.js";
+import {removeServerSetting} from "./BotSettingProvider.js";
+import {BaseUserContext} from "./util/BaseUserContext.js";
+import {handleMessage} from "./util/EntryMessageHandler.js";
+import {handleFeedInteraction} from "./util/ClaimWinFeed.js";
+import {handleChannelInteraction} from "./util/ClaimWinChannel.js";
+import {showProfileEmbed} from "./commands/ProfileCommand.js";
+import rawSettings from "./config.json" with { type: "json" };
 
-export const config: { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, btt_api_url: string, wss_secret: string, bot_owner: string} = require("./config.json");
+export interface config { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, btt_api_url: string, wss_secret: string, bot_owner: string};
+export const config: config = rawSettings as config;
 export const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages]});
 
 export interface Command {
@@ -178,7 +180,7 @@ export function logAction(context: BotUserContext, action: string, color: ColorR
 
 client.login(config.token).then(() => console.log("Authenticated to Discord API!"));
 
-require("./util/APIServer");
-require("./util/WebSocketServer");
+import "./util/APIServer.js";
+import "./util/WebSocketServer.js";
 
 export {db, rewards};

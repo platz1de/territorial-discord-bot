@@ -2,12 +2,13 @@
   "compilerOptions": {
 	"strict": true,
 	"outDir": "build",
-	"module": "commonjs",
+	"module": "node20", //needed for settings.json loading
 	"target": "es2022",
-	"moduleResolution": "node",
+	"moduleResolution": "node16",
 	"resolveJsonModule": true,
 	"typeRoots": ["node_modules/@types"],
-	"types": ["node"]
+	"types": ["node"],
+	"skipLibCheck": true //avoid ChartJS errors
   },
   "include": ["./"],
   "exclude": ["./build", "./node_modules"]

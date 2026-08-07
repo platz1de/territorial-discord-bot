@@ -1,5 +1,5 @@
 import {Colors, EmbedBuilder, User} from "discord.js";
-import {RewardAnswer} from "./RewardManager";
+import {RewardAnswer} from "./RewardManager.js";
 
 function createErrorEmbed(user: User, message: string) {
 	return {embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setDescription(message).setTimestamp().setColor(Colors.Red).toJSON()]};

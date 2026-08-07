@@ -1,8 +1,8 @@
-import * as sqlite3 from "sqlite3";
+import sqlite3 from "sqlite3";
 import {Snowflake} from "discord.js";
+import * as settings from "../BotSettingProvider.js";
 
 const db = new sqlite3.Database("./ranking.db");
-const settings = require("../BotSettingProvider");
 
 db.run("CREATE TABLE IF NOT EXISTS global_points (guild TEXT, member TEXT, points INTEGER, wins INTEGER, PRIMARY KEY (guild, member))");
 db.run("CREATE TABLE IF NOT EXISTS daily_points (guild TEXT, member TEXT, day INTEGER, points INTEGER, wins INTEGER, PRIMARY KEY (guild, member, day))");

@@ -1,8 +1,8 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {BotUserContext, getRawUser} from "../util/BotUserContext";
-import {createErrorEmbed} from "../util/EmbedUtil";
-import {config, getCommandId, PointCommand} from "../PointManager";
-import {setServerSetting} from "../BotSettingProvider";
+import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
+import {createErrorEmbed} from "../util/EmbedUtil.js";
+import {config, getCommandId, PointCommand} from "../PointManager.js";
+import {setServerSetting} from "../BotSettingProvider.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("import").setDescription("Import points from third-party bots").setDefaultMemberPermissions(PermissionFlagsBits.Administrator),

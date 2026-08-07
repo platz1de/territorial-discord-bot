@@ -1,7 +1,7 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
-import {PointCommand} from "../PointManager";
-import {format} from "../util/EmbedUtil";
-import {BotUserContext} from "../util/BotUserContext";
+import {PointCommand} from "../PointManager.js";
+import {format} from "../util/EmbedUtil.js";
+import {BotUserContext} from "../util/BotUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("leaderboard").setDescription("Show the leaderboard")

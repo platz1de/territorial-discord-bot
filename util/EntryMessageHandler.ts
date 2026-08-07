@@ -1,12 +1,12 @@
-import {BotUserContext} from "./BotUserContext";
-import {client, config} from "../PointManager";
-import {tryAddEntryMessage} from "../commands/AddWinCommand";
-import {tryRemoveEntryMessage} from "../commands/RemoveWinCommand";
-import {tryProfileEntryMessage} from "../commands/ProfileCommand";
-import {tryMultiplierEntryMessage} from "../commands/MultiplierCommand";
-import {tryLeaderboardEntryMessage} from "../commands/LeaderboardCommand";
+import {BotUserContext} from "./BotUserContext.js";
+import {client, config} from "../PointManager.js";
+import {tryAddEntryMessage} from "../commands/AddWinCommand.js";
+import {tryRemoveEntryMessage} from "../commands/RemoveWinCommand.js";
+import {tryProfileEntryMessage} from "../commands/ProfileCommand.js";
+import {tryMultiplierEntryMessage} from "../commands/MultiplierCommand.js";
+import {tryLeaderboardEntryMessage} from "../commands/LeaderboardCommand.js";
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, NewsChannel, TextChannel} from "discord.js";
-import {getServerContext} from "../BotSettingProvider";
+import {getServerContext} from "../BotSettingProvider.js";
 
 export async function handleMessage(context: BotUserContext, message: string) {
 	if (message.startsWith("<@" + client.user?.id + ">")) message = message.substring((client.user?.id.length || 0) + 3);

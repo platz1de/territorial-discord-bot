@@ -1,7 +1,7 @@
-import {server} from "./APIServer";
+import {server} from "./APIServer.js";
 import {WebSocketServer} from "ws";
-import {config} from "../PointManager";
-import {addToCache} from "./GameDataDistributor";
+import {config} from "../PointManager.js";
+import {addToCache} from "./GameDataDistributor.js";
 
 const wss = new WebSocketServer({server});
 wss.on("connection", function (ws) {
