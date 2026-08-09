@@ -17,8 +17,9 @@ Set `wss_secret` (can be left blank in development environemnt). Other options c
 ## Usage
 
 1. Invite bot to your server
-2. Run the `/setup` command and complete the setup process. 3. Run `/settings settag` to set clan tag e.g. `[TEST]`.
-3. A list of commands can be found by running `/help` in your Discord server.
+2. Run the `/setup` command and complete the setup process.
+3. Run `/settings settag` to set clan tag e.g. `[TEST]`.
+4. A list of commands can be found by running `/help` in your Discord server.
 
 ## Win Feed
 To trigger win registration logic:
