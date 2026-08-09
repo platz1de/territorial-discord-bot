@@ -11,27 +11,27 @@ Public hosted version: [invite](https://discord.com/api/oauth2/authorize?client_
 3. Install TypeScript globally with `npm install -g typescript` (if not already installed)
 4. Compile the bot with `tsc`
 5. Paste your bot token in `build/config.json` (Obtainable from [here](https://discord.com/developers/applications).
-Set `wss_secret` or leave it blank. Other options can be left blank for basic functionality to work.
+Set `wss_secret` (can be left blank in development environemnt). Other options can be left blank for basic functionality to work.
 6. Run the bot with `cd build && node PointManager`
 
 ## Usage
 
 1. Invite bot to your server
-2. Run the `/setup` command and complete the setup process. Set clan tag e.g. `[TEST]`.
+2. Run the `/setup` command and complete the setup process. 3. Run `/settings settag` to set clan tag e.g. `[TEST]`.
 3. A list of commands can be found by running `/help` in your Discord server.
 
 ## Win Feed
 To trigger win registration logic:
 
-1. Open Chrome Browser
+1. Open your Browser
 2. Navigate to http://localhost:34583/
 3. Open Dev Tools
-4. Open console
-5. Establish socket connection:
+4. Open Console
+5. Establish socket connection (`secret` should match `wss_secret`):
 ```
 let ws = new WebSocket('ws://localhost:34583');
 ws.onopen = (event) => {
-	ws.send(JSON.stringify({ type: 'verification', secret: '', data: '' }));
+	ws.send(JSON.stringify({ type: 'verification', secret: '' }));
 };
 ```
 6. Post a win message:
