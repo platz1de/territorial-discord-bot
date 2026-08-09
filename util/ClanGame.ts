@@ -64,7 +64,7 @@ export class ClanGame {
 						gold: Number( payoutVals[1] )
 					};
 				}) as readonly GoldPayout[];
-		this.timestamp = Date.now();
+		this.timestamp = new Date(match.groups.time).getTime();
 		this.isDefault = false;
     }
 }
