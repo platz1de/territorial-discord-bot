@@ -8,7 +8,6 @@
 	"resolveJsonModule": true,
 	"typeRoots": ["node_modules/@types"],
 	"types": ["node"],
-	"skipLibCheck": true //avoid ChartJS errors
   },
   "include": ["./"],
   "exclude": ["./build", "./node_modules"]
