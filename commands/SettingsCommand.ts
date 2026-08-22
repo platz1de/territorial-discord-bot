@@ -123,7 +123,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 	}
 	let embeds = [];
 	if (changes.length > 0) {
-		updateSettings(); //Save settings if anything was cleaned up
+		context.saveContext(); //Save settings if anything was cleaned up
 		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(isCritical ? Colors.Red : Colors.Yellow).toJSON());
 	}
 	embeds.push(new EmbedBuilder().setAuthor({name: context.guild.name, iconURL: context.guild.iconURL() || undefined})
@@ -164,6 +164,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 function getSettingsFields(context: ServerSetting, page: number): { name: string, value: string }[] {
 	switch (page) {
 		case 0:
+			const multiplier = context.getActiveMultiplier();
 			return [
 				{
 					name: "🏷️ Clan Tag",
@@ -175,7 +176,7 @@ function getSettingsFields(context: ServerSetting, page: number): { name: string
 				},*/
 				{
 					name: "🔢 Multiplier",
-					value: (context.multiplier ? `\`x ${context.multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>\n\u200B`
+					value: (multiplier ? `\`x ${multiplier.amount}\`` : "Inactive") + `\nPoints are multiplied by this amount when added to a member's balance.\nEdit: </multiplier set:${getCommandId("multiplier")}> & </multiplier clear:${getCommandId("multiplier")}>\n\u200B`
 				}
 			];
 		case 1:
@@ -422,5 +423,6 @@ async function handleSetting(data: ChatInputCommandInteraction, context: BotUser
 				break;
 		}
 	}
-	setServerSetting(context.context);
+	context.saveContext();
+	//setServerSetting(context.context);
 }

@@ -25,7 +25,7 @@ export default {
 			await context.reply(err);
 			return;
 		}
-		const multiplier = context.context.multiplier;
+		const multiplier = context.context.getActiveMultiplier();
 		let realPoints = Math.ceil(points * ( multiplier?.amount ?? 1 ));
 		const response = await getRawUser(context.guild.id, user.id)?.registerWin(realPoints) || [];
 		if (user.id !== context.user.id) {
@@ -165,7 +165,7 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 		await context.reply(err);
 		return true;
 	}
-	const multiplier = context.context.multiplier;
+	const multiplier = context.context.getActiveMultiplier();
 	let realPoints = Math.ceil(points * ( multiplier?.amount ?? 1 ));
 
 	if (targets.length === 1) {

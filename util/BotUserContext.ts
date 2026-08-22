@@ -1,6 +1,6 @@
 import {Guild, GuildMember, Message, Snowflake} from "discord.js";
 import {client, rewards} from "../PointManager.js";
-import {getServerContext, ServerSetting} from "../BotSettingProvider.js";
+import {getServerContext, ServerSetting, updateSettings} from "../BotSettingProvider.js";
 import {RewardAnswer} from "./RewardManager.js";
 import {BaseUserContext, InteractionTypes} from "./BaseUserContext.js";
 export type  {MultiplierSetting} from "../BotSettingProvider.js";
@@ -127,6 +127,10 @@ export class BotUserContext extends BaseUserContext {
 			date.setDate(date.getDate() - 1);
 		}
 		return data.reverse();
+	}
+
+	saveContext() {
+		updateSettings();
 	}
 
 	getDailyEntryCount(duration: number): number {

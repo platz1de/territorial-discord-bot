@@ -25,7 +25,7 @@ export default {
 			await context.reply(err);
 			return;
 		}
-		const multiplier = context.context.multiplier;
+		const multiplier = context.context.getActiveMultiplier();
 		let realPoints = Math.ceil( points * ( multiplier?.amount ?? 1 ));
 		const response = await getRawUser(context.guild.id, user.id)?.removeWin(realPoints) || [];
 		if (user.id !== context.user.id) {
@@ -93,7 +93,7 @@ export async function tryRemoveEntryMessage(context: BotUserContext, message: st
 		await context.reply(err);
 		return true;
 	}
-	const multiplier = context.context.multiplier;
+	const multiplier = context.context.getActiveMultiplier();
 	let realPoints = Math.ceil(points * ( multiplier?.amount ?? 1 ));
 	const response = await getRawUser(context.guild.id, target)?.removeWin(realPoints) || [];
 	if (target !== context.user.id) {
