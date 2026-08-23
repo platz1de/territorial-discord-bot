@@ -87,7 +87,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 			components: [
 				new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 					new StringSelectMenuBuilder().setCustomId("claim_channel").setPlaceholder("Select a game").addOptions(choices.map((choice) => {
-						return {label: choice.contest ? "Contest with " + choice.playerCount + " players on " + choice.map : "Clan game with " + choice.playerCount + " players on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.playerCount}-${factorId}-${context.context.multiplier?.amount ?? ""}-` + Math.random().toString(10)}
+						return {label: choice.contest ? "Contest with " + choice.playerCount + " players on " + choice.map : "Clan game with " + choice.playerCount + " players on " + choice.map, value: `${choice.contest ? "cont" : "norm"}-${choice.map}-${choice.playerCount}-${factorId}-${context.context.getActiveMultiplier()?.amount ?? ""}-` + Math.random().toString(10)}
 					}))
 				)
 			],

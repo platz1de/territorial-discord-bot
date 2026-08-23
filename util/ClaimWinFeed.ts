@@ -41,7 +41,7 @@ export async function sendToFeed(clan: string, message: string, points: number, 
 			]
 		}).catch(() => {});
 		if (!msg) continue;
-		messageCache[msg.id] = {msg, points, multiplier: context.multiplier?.amount ?? null, timestamp: Date.now(), claimed: claimed} as CacheValue;
+		messageCache[msg.id] = {msg, points, multiplier: context.getActiveMultiplier()?.amount ?? null, timestamp: Date.now(), claimed: claimed} as CacheValue;
 	}
 }
 
