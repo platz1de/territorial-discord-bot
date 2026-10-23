@@ -1,8 +1,8 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedBuilder, GuildMember, Interaction, Message, MessageFlags, NewsChannel, StringSelectMenuBuilder, TextChannel} from "discord.js";
 import {BotUserContext, getUser, LimitedServerSettings} from "./BotUserContext.js";
-import {format, toRewardString} from "./EmbedUtil.js";
 import {client} from "../PointManager.js";
 import {getCacheForClan} from "./GameDataDistributor.js";
+import {BulkPointTransaction} from "./BulkPointTransaction.js";
 
 export async function getOrSendMessage(context: LimitedServerSettings) {
 	if (!context.claim_channel) return;
@@ -102,31 +102,22 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		let map = parts[1];
 		let points = parseInt(parts[2]) * (contest ? 2 : 1);
 		let factor = parts[3];
-		let realPoints = points;
-		const multiplier = context.getActiveMultiplier();
-		if (multiplier) {
-			realPoints = Math.ceil(realPoints * multiplier.amount);
-		}
-		if (factor !== "n") {
-			if (!context.getSettings().factor_buttons[parseInt(factor)]) return;
-			realPoints = Math.ceil(realPoints * context.getSettings().factor_buttons[parseInt(factor)].factor);
-			points = Math.ceil(points * context.getSettings().factor_buttons[parseInt(factor)].factor);
-		}
-		context.registerWin(realPoints).then((response) => {
-			interaction.reply({
+
+		const transaction = new BulkPointTransaction(context.guild.id, context.getActiveMultiplier(), points, 1);
+		await transaction.apply(context.user.id, factor !== "n" && context.getSettings().factor_buttons[parseInt(factor)] ? context.getSettings().factor_buttons[parseInt(factor)].factor : 1);
+		interaction.reply({
+			embeds: [
+				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(transaction.getPart(context)!.buildDescription(true)).setColor(Colors.Green).setTimestamp().toJSON()
+			],
+			flags: MessageFlags.Ephemeral
+		}).catch(() => {});
+		let channel = client.channels.cache.get(context.getSettings().channel_id[0]);
+		if (channel && channel instanceof TextChannel) {
+			channel.send({
 				embeds: [
-					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(`Registered win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to your balance` + toRewardString(response, false, false)).setColor(Colors.Green).setTimestamp().toJSON()
-				],
-				flags: MessageFlags.Ephemeral
+					new EmbedBuilder().setAuthor({name: context.user.tag + " via Claim", iconURL: context.user.displayAvatarURL()}).setDescription(transaction.getPart(context)!.buildDescription(false)).setTimestamp().setColor(Colors.Green).setFooter({text: "Action was taken after button press"}).toJSON()
+				]
 			}).catch(() => {});
-			let channel = client.channels.cache.get(context.getSettings().channel_id[0]);
-			if (channel && channel instanceof TextChannel) {
-				channel.send({
-					embeds: [
-						new EmbedBuilder().setAuthor({name: context.user.tag + " via Claim", iconURL: context.user.displayAvatarURL()}).setDescription(`Registered win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to <@${context.id}>'s balance` + toRewardString(response, false, false)).setTimestamp().setColor(Colors.Green).setFooter({text: "Action was taken after button press"}).toJSON()
-					]
-				}).catch(() => {});
-			}
-		});
+		}
 	}
 }

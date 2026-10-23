@@ -1,9 +1,9 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, MessageFlags, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
 import {logAction, PointCommand} from "../PointManager.js";
-import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil.js";
-import {normalizeChanges, RewardAnswer} from "../util/RewardManager.js";
-import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
+import {createErrorEmbed} from "../util/EmbedUtil.js";
+import {BotUserContext} from "../util/BotUserContext.js";
 import type {MultiplierSetting} from "../BotSettingProvider.js";
+import {BulkPointTransaction} from "../util/BulkPointTransaction.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("addwin").setDescription("Add win to a member")
@@ -23,29 +23,20 @@ export default {
 			return;
 		}
 		const multiplier = context.getActiveMultiplier();
-		let realPoints = points;
-		if (multiplier) {
-			realPoints = Math.ceil(points * multiplier.amount);
-		}
-		const response = await getRawUser(context.guild.id, user.id)?.registerWin(realPoints) || [];
+		const transaction = new BulkPointTransaction(context.guild.id, multiplier, points, 1);
+		await transaction.apply(user.id);
 		if (user.id !== context.user.id) {
 			logAction(context, `Added ${points} points to ${user}`, Colors.Yellow);
 		}
-		await showAddWinEmbed(context, points, [user.id], [response], multiplier);
+		await showAddWinEmbed(context, points, [user.id], transaction, multiplier);
 	}
 } as PointCommand;
 
-async function showAddWinEmbed(context: BotUserContext, points: number, targets: Snowflake[], rewards: RewardAnswer[][], multiplier: MultiplierSetting | null) {
-	let memberString;
-	if (targets.length === 1) {
-		memberString = `${context.user.id === targets[0] ? "your" : `<@${targets[0]}>'s`} balance${toRewardString(rewards[0], context.user.id === targets[0], false)}`;
-	} else {
-		memberString = `\n${targets.map((member, i) => (`<@${member}>${toRewardString(rewards[i], false, true)}`)).join("\n")}`;
-	}
+async function showAddWinEmbed(context: BotUserContext, points: number, targets: Snowflake[], transaction: BulkPointTransaction, multiplier: MultiplierSetting | null) {
 	const msg = await context.reply({
 		embeds: [
 			new EmbedBuilder().setAuthor(context.asAuthor())
-				.setDescription(`Registered win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to ${memberString}`)
+				.setDescription(transaction.getPart(context)!.buildDescription(targets.length === 1 && context.user.id === targets[0], transaction.affectedUserList(context)))
 				.setTimestamp().setColor(targets.length === 1 && context.user.id === targets[0] ? Colors.Green : Colors.Yellow).toJSON()
 		],
 		components: [
@@ -81,17 +72,10 @@ async function showAddWinEmbed(context: BotUserContext, points: number, targets:
 				await i2.editReply(err);
 				return;
 			}
-			const diff = newPoints - points;
-			let realDiff = diff;
-			if (multiplier) {
-				realDiff = Math.ceil(diff * multiplier.amount);
-			}
-			for (let i = 0; i < targets.length; i++) {
-				rewards[i] = normalizeChanges(rewards[i], await getRawUser(context.guild.id, targets[i])?.modifyPoints(realDiff) || []);
-			}
-			logAction(context, `Edited ${targets.length === 1 ? `<@${targets[0]}>'s` : `<@${context.member}>'s bulk add`} win points by ${diff} (${points} -> ${newPoints})`, Colors.Yellow);
+			await transaction.editPoints(newPoints);
+			logAction(context, `Edited ${targets.length === 1 ? `<@${targets[0]}>'s` : `<@${context.member}>'s bulk add`} win points by ${newPoints - points} (${points} -> ${newPoints})`, Colors.Yellow);
 			collector.stop();
-			await showAddWinEmbed(context, newPoints, targets, rewards, multiplier);
+			await showAddWinEmbed(context, newPoints, targets, transaction, multiplier);
 			await i2.editReply({content: "✅ Points edited"});
 		}).catch(async () => {
 			//Timeout
@@ -162,10 +146,6 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 		return true;
 	}
 	const multiplier = context.getActiveMultiplier();
-	let realPoints = points;
-	if (multiplier) {
-		realPoints = Math.ceil(points * multiplier.amount);
-	}
 	if (targets.length === 1) {
 		const target = targets[0];
 		if (target !== context.user.id && !context.hasModAccess()) {
@@ -178,10 +158,8 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 	} else {
 		logAction(context, `Added ${points} points to ${targets.length} members`, Colors.Yellow);
 	}
-	let rewards: RewardAnswer[][] = [];
-	for (const target of targets) {
-		rewards.push(await getRawUser(context.guild.id, target)?.registerWin(realPoints) || []);
-	}
-	await showAddWinEmbed(context, points, targets, rewards, multiplier);
+	const transaction = new BulkPointTransaction(context.guild.id, multiplier, points, 1);
+	await Promise.all(targets.map(transaction.apply));
+	await showAddWinEmbed(context, points, targets, transaction, multiplier);
 	return true;
 }

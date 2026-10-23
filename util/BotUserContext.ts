@@ -54,24 +54,9 @@ export class BotUserContext extends BaseUserContext {
 		return this.context.win_feed ? this.guild.channels.cache.get(this.context.win_feed) : undefined;
 	}
 
-	async registerWin(points: number): Promise<RewardAnswer[]> {
-		this.modifyDailyData(points, 1);
-		return this.modifyAllTimeData(points, 1);
-	}
-
-	async removeWin(points: number): Promise<RewardAnswer[]> {
-		this.modifyDailyData(-points, -1);
-		return this.modifyAllTimeData(-points, -1);
-	}
-
-	async modifyPoints(points: number): Promise<RewardAnswer[]> {
-		this.modifyDailyData(points, 0);
-		return this.modifyAllTimeData(points, 0);
-	}
-
-	async modifyWins(wins: number): Promise<RewardAnswer[]> {
-		this.modifyDailyData(0, wins);
-		return this.modifyAllTimeData(0, wins);
+	async modifyData(points: number, wins: number): Promise<RewardAnswer[]> {
+		this.modifyDailyData(points, wins);
+		return this.modifyAllTimeData(points, wins);
 	}
 
 	getData(): { points: number, wins: number } {

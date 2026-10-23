@@ -2,11 +2,10 @@ import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedBuilder, Guil
 import {client} from "../PointManager.js";
 import {getGuildsForClan, getServerContext} from "../BotSettingProvider.js";
 import {BotUserContext, getUser} from "./BotUserContext.js";
-import {format, toRewardString} from "./EmbedUtil.js";
 import {ClanGame} from "./ClanGame.js";
+import {BulkPointTransaction} from "./BulkPointTransaction.js";
 
-interface claimedCache{ [key: Snowflake]: number };
-let messageCache: { [key: Snowflake]: { msg: Message, points: number, timestamp: number, claimed: claimedCache } } = {};
+let messageCache: { [key: Snowflake]: { msg: Message, timestamp: number, original: string, transaction: BulkPointTransaction } } = {};
 
 export async function sendToFeed(clan: string, message: string, points: number, gameDetails: ClanGame) {
 	for (const guild of getGuildsForClan(clan)) {
@@ -28,7 +27,6 @@ export async function sendToFeed(clan: string, message: string, points: number, 
 				new ButtonBuilder().setCustomId("claim").setLabel("Claim Points").setStyle(ButtonStyle.Primary)
 			);
 		}
-		let claimed: claimedCache = {};
 		let msg = await channel.send({
 			content: message,
 			components: [
@@ -36,19 +34,9 @@ export async function sendToFeed(clan: string, message: string, points: number, 
 			]
 		}).catch(() => {});
 		if (!msg) continue;
-		messageCache[msg.id] = {msg, points, timestamp: Date.now(), claimed: claimed};
+		// TODO: Migrate this to getActiveMultiplier
+		messageCache[msg.id] = {msg, timestamp: Date.now(), original: message, transaction: new BulkPointTransaction(guild, context.multiplier, points, 1)};
 	}
-}
-
-function updateMessage(message: Message, isFirst: boolean, user: Snowflake, factor: number) {
-	let msg = message.content;
-	if (isFirst) {
-		msg += "\n\n**Claimed by:**";
-	}
-	msg += `\n<@${user}>` + (factor !== 1 ? ` \`x ${factor}\`` : ``);
-	message.edit({
-		content: msg
-	}).catch(() => {});
 }
 
 export async function handleFeedInteraction(interaction: Interaction) {
@@ -62,22 +50,15 @@ export async function handleFeedInteraction(interaction: Interaction) {
 	const cache = messageCache[message.id];
 	if (cache.timestamp + 300000 < Date.now()) return;
 
-	let points = cache.points;
-	let realPoints = points;
-	
 	let factorInt = 1;
-	let isClaimEdit = false;
 	if (interaction.customId.startsWith("claim_factor_")) {
 		let factor = context.getSettings().factor_buttons[parseInt(interaction.customId.substring(13))] ;
 		if (!factor) return;
 		factorInt = factor.factor;
 	}
-	points = Math.ceil(points * factorInt );
-	const multiplier = context.getActiveMultiplier();
-	realPoints = Math.ceil(points * (multiplier ? multiplier.amount : 1));
 
 	//Already claimed with this factor
-	if (cache.claimed[interaction.user.id] && cache.claimed[interaction.user.id] == factorInt ) {
+	if (cache.transaction.getAppliedFactor(context) == factorInt) {
 		interaction.reply({
 			embeds: [
 				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("You have already claimed this win!").setColor(Colors.Red).setTimestamp().toJSON()
@@ -86,28 +67,15 @@ export async function handleFeedInteraction(interaction: Interaction) {
 		}).catch(() => {});
 		return;
 	}
-	//Change claimed factor
-	else if(cache.claimed[interaction.user.id] && cache.claimed[interaction.user.id] != factorInt )
-	{
-		isClaimEdit = true;
-		//Calculate points to remove using previously claimed factor
-		const realPoints = Math.ceil(
-					cache.points * cache.claimed[interaction.user.id] * (multiplier ? multiplier.amount : 1));
-		const regex = new RegExp( '\n<\@' + interaction.user.id + '>.*');
-		//Edit will be executed later by registerWin response
-		message.content = message.content.replace( regex, '' );
-		await context.removeWin(realPoints);
-	}
-	context.registerWin(realPoints).then((response) => {
-		cache.claimed[interaction.user.id] = factorInt;
-		updateMessage(cache.msg, Object.keys(cache.claimed).length == 1 && !isClaimEdit, interaction.user.id, factorInt);
-		interaction.reply({
-			embeds: [
-				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(`Registered win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points to your balance` + toRewardString(response, true, false)).setTimestamp().setColor(Colors.Green).toJSON()
-			],
-			flags: MessageFlags.Ephemeral
-		}).catch(() => {});
-	});
+
+	await cache.transaction.apply(interaction.member.id, factorInt);
+	await cache.msg.edit({content: cache.transaction.claimedUserList(cache.original)});
+	interaction.reply({
+		embeds: [
+			new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(cache.transaction.getPart(context)!.buildDescription(true)).setColor(Colors.Green).setTimestamp().toJSON()
+		],
+		flags: MessageFlags.Ephemeral
+	}).catch(() => {});
 }
 
 function refresh() {

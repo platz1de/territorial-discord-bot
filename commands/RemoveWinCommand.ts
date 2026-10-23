@@ -1,9 +1,8 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder, Snowflake, User} from "discord.js";
 import {logAction, PointCommand} from "../PointManager.js";
-import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil.js";
-import {RewardAnswer} from "../util/RewardManager.js";
+import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
-import type {MultiplierSetting} from "../BotSettingProvider.js";
+import {createPointTransaction, PointTransaction} from "../util/PointTransaction.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("removewin").setDescription("Remove win from a member")
@@ -23,22 +22,18 @@ export default {
 			return;
 		}
 		const multiplier = context.getActiveMultiplier();
-		let realPoints = points;
-		if (multiplier) {
-			realPoints = Math.ceil(points * multiplier.amount);
-		}
-		const response = await getRawUser(context.guild.id, user.id)?.removeWin(realPoints) || [];
+		const transaction = await createPointTransaction(getRawUser(context.guild.id, user.id)!, multiplier, -points, -1);
 		if (user.id !== context.user.id) {
 			logAction(context, `Removed win of ${points} points from ${user}`, Colors.Yellow);
 		}
-		await showRemoveWinEmbed(context, points, user.id, response, multiplier);
+		await showRemoveWinEmbed(context, user.id, transaction);
 	}
 } as PointCommand;
 
-async function showRemoveWinEmbed(context: BotUserContext, points: number, target: Snowflake, rewards: RewardAnswer[], multiplier: MultiplierSetting | null) {
+async function showRemoveWinEmbed(context: BotUserContext, target: Snowflake, transaction: PointTransaction) {
 	await context.reply({
 		embeds: [
-			new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(`Removed win of ${format(points)} ${multiplier ? `\`x ${multiplier.amount} (multiplier)\` ` : ``}points from ${context.user.id === target ? "your" : `<@${target}>'s`} balance` + toRewardString(rewards, context.user.id === target, false)).setTimestamp().setColor(context.user.id === target ? Colors.Red : Colors.Yellow).toJSON()
+			new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(transaction.buildDescription(context.user.id === target)).setTimestamp().setColor(context.user.id === target ? Colors.Red : Colors.Yellow).toJSON()
 		]
 	});
 }
@@ -90,14 +85,10 @@ export async function tryRemoveEntryMessage(context: BotUserContext, message: st
 		return true;
 	}
 	const multiplier = context.getActiveMultiplier();
-	let realPoints = points;
-	if (multiplier) {
-		realPoints = Math.ceil(points * multiplier.amount);
-	}
-	const response = await getRawUser(context.guild.id, target)?.removeWin(realPoints) || [];
+	const transaction = await createPointTransaction(getRawUser(context.guild.id, target)!, multiplier, -points, -1);
 	if (target !== context.user.id) {
 		logAction(context, `Removed win of ${points} points from <@${target}>`, Colors.Yellow);
 	}
-	await showRemoveWinEmbed(context, points, target, response, multiplier);
+	await showRemoveWinEmbed(context, target, transaction);
 	return true;
 }

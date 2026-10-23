@@ -72,7 +72,7 @@ function importUnbelievaBoat(context: BotUserContext, msg: any, page: number = 1
 		for (const user of users) {
 			const u = getRawUser(context.guild.id, user.user_id);
 			if (!u) continue;
-			promises.push(u?.modifyPoints(user.total));
+			promises.push(u?.modifyData(user.total, 0));
 		}
 		await Promise.all(promises);
 		await msg.reply({embeds: [new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setTitle("Import points from third-party bots").setDescription(`Successfully imported ${data.users.length} users!`).setTimestamp().setColor(Colors.Green).toJSON()]});

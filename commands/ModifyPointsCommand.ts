@@ -1,7 +1,8 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, User} from "discord.js";
 import {logAction, PointCommand} from "../PointManager.js";
-import {createErrorEmbed, format, toRewardString} from "../util/EmbedUtil.js";
+import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
+import {createPointTransaction} from "../util/PointTransaction.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("modifypoints").setDescription("Modify points of a member")
@@ -25,8 +26,8 @@ export default {
 			await interaction.editReply(createErrorEmbed(interaction.user, "⚠ You need to specify a valid amount of points!"));
 			return;
 		}
-		const response = type === 0 ? await getRawUser(context.guild.id, user.id)?.modifyPoints(points) : await getRawUser(context.guild.id, user.id)?.modifyWins(points);
+		const transaction = await createPointTransaction(getRawUser(context.guild.id, user.id)!, null, type === 0 ? points : 0, type === 0 ? 0 : points);
 		logAction(context, `Modified ${type === 0 ? "points" : "wins"} from ${user} by ${points}`, Colors.Yellow);
-		await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Modified ${type === 0 ? "points" : "wins"} from ${user} by ${format(points)}` + toRewardString(response || [], false, false)).setTimestamp().setColor(Colors.Yellow).toJSON()]});
+		await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(transaction.buildDescription(false)).setTimestamp().setColor(Colors.Yellow).toJSON()]});
 	}
 } as PointCommand;
