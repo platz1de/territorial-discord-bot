@@ -53,14 +53,6 @@ export class BaseUserContext {
 		return {name: this.user.tag, iconURL: this.user.displayAvatarURL()};
 	}
 
-	getTotalData(): { points: number, wins: number } {
-		return {points: 0, wins: 0};
-	}
-
-	getAllTimeEntryCount(): number {
-		return 0;
-	}
-
 	async deleteUser() {
 		this.db.prepare("DELETE FROM global_points WHERE member = ?").run(this.id);
 		this.db.prepare("DELETE FROM daily_points WHERE member = ?").run(this.id);

@@ -1,5 +1,5 @@
 import {AttachmentBuilder, ChatInputCommandInteraction, SlashCommandBuilder} from "discord.js";
-import {config, PointCommand} from "../PointManager.js";
+import {config, GenericCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {BotUserContext} from "../util/BotUserContext.js";
 import {renderClanChart} from "../util/GraphRenderer.js";
@@ -130,5 +130,5 @@ export default {
 			console.error(e);
 		}
 	}
-} as PointCommand;
+} as GenericCommand;
 
