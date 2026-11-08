@@ -1,4 +1,4 @@
-import {ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder, Snowflake, User} from "discord.js";
+import {ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
 import {logAction, PointCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
@@ -13,12 +13,12 @@ export default {
 		const user: User = interaction.options.getUser("member") || context.user;
 		const points: number = interaction.options.getInteger("points", true);
 		if (user.id !== context.user.id && !context.hasModAccess()) {
-			await context.reply(createErrorEmbed(interaction.user, "❌ You can't remove points from other members!"));
+			await interaction.editReply(createErrorEmbed(interaction.user, "❌ You can't remove points from other members!"));
 			return;
 		}
 		const err = await checkPointInput(points, interaction.user);
 		if (err) {
-			await context.reply(err);
+			await interaction.editReply(err);
 			return;
 		}
 		const multiplier = context.getActiveMultiplier();
@@ -26,16 +26,16 @@ export default {
 		if (user.id !== context.user.id) {
 			logAction(context, `Removed win of ${points} points from ${user}`, Colors.Yellow);
 		}
-		await showRemoveWinEmbed(context, user.id, transaction);
+		await interaction.editReply(buildRemoveWinEmbed(context, user.id, transaction));
 	}
 } as PointCommand;
 
-async function showRemoveWinEmbed(context: BotUserContext, target: Snowflake, transaction: PointTransaction) {
-	await context.reply({
+function buildRemoveWinEmbed(context: BotUserContext, target: Snowflake, transaction: PointTransaction) {
+	return {
 		embeds: [
 			new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(transaction.buildDescription(context.user.id === target)).setTimestamp().setColor(context.user.id === target ? Colors.Red : Colors.Yellow).toJSON()
 		]
-	});
+	};
 }
 
 async function checkPointInput(points: number, user: User) {
@@ -48,9 +48,9 @@ async function checkPointInput(points: number, user: User) {
 	return false;
 }
 
-export async function tryRemoveEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
+export async function tryRemoveEntryMessage(context: BotUserContext, message: Message, content: string): Promise<boolean> {
 	if (!context.getSettings().channel_id.includes(context.channel?.id || "0")) return false;
-	let args = message.split(" ");
+	let args = content.split(" ");
 	let target: Snowflake = context.id;
 	if (args[0]?.match(/<@!?\d+>/)) {
 		// @ts-ignore
@@ -64,7 +64,7 @@ export async function tryRemoveEntryMessage(context: BotUserContext, message: st
 		args.shift();
 	}
 	if (target !== context.user.id && !context.hasModAccess()) {
-		await context.reply(createErrorEmbed(context.user, "❌ You can't remove points from other members!"));
+		await message.reply(createErrorEmbed(context.user, "❌ You can't remove points from other members!"));
 		return true;
 	}
 	const pointData = args.join(" ").replaceAll("*", "x").replaceAll("×", "x").split("x").map(s => s.trim());
@@ -81,7 +81,7 @@ export async function tryRemoveEntryMessage(context: BotUserContext, message: st
 	points = -points;
 	const err = await checkPointInput(points, context.user);
 	if (err) {
-		await context.reply(err);
+		await message.reply(err);
 		return true;
 	}
 	const multiplier = context.getActiveMultiplier();
@@ -89,6 +89,6 @@ export async function tryRemoveEntryMessage(context: BotUserContext, message: st
 	if (target !== context.user.id) {
 		logAction(context, `Removed win of ${points} points from <@${target}>`, Colors.Yellow);
 	}
-	await showRemoveWinEmbed(context, target, transaction);
+	await message.reply(buildRemoveWinEmbed(context, target, transaction));
 	return true;
 }

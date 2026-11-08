@@ -1,7 +1,8 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
+import {ActionRowBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
 import {PointCommand} from "../PointManager.js";
 import {format} from "../util/EmbedUtil.js";
 import {BotUserContext} from "../util/BotUserContext.js";
+import {buildMessageReplyContext} from "../util/InteractionContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("leaderboard").setDescription("Show the leaderboard")
@@ -13,11 +14,11 @@ export default {
 		let page: number = interaction.options.getInteger("page") || 1;
 		const type: number = interaction.options.getInteger("type") || 0;
 		const duration: number = interaction.options.getInteger("duration") === null ? -1 : Math.max(0, Math.min(interaction.options.getInteger("duration") || 7, 30));
-		await buildLeaderboardPage(context, page, type === 1, duration);
+		await buildLeaderboardPage(context, page, type === 1, duration, interaction.editReply);
 	}
 } as PointCommand;
 
-async function buildLeaderboardPage(context: BotUserContext, page: number, wins: boolean, duration: number) {
+async function buildLeaderboardPage(context: BotUserContext, page: number, wins: boolean, duration: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
 	if (isNaN(duration)) duration = 7;
 	const max: number = Math.ceil((duration === -1 ? context.getAllTimeEntryCount() : context.getDailyEntryCount(duration)) / 10);
 	page = Math.max(1, Math.min(page, max));
@@ -27,7 +28,7 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 		start.setUTCHours(0, 0, 0, 0);
 		start.setDate(start.getDate() - duration);
 	}
-	const msg = await context.reply({
+	const msg = await reply({
 		embeds: [new EmbedBuilder().setColor(Colors.Blurple)
 			.setAuthor({name: `Leaderboard ${duration === -1 ? `of ${context.guild.name}` : `for last ${duration} days`}`, iconURL: context.guild.iconURL() || undefined})
 			.setDescription(`${duration !== -1 ? `<t:${Math.floor(start.getTime() / 1000)}:F> - <t:${Math.floor(end.getTime() / 1000)}:F>\n` : ``}Showing ${wins ? "wins 🏅" : "points 🏆"}\n⠀\n` + leaderboard.map((entry: any, index: number) => `${(page - 1) * 10 + index + 1}. <@${entry.member}> • ${format(entry.value)}`).join("\n"))
@@ -64,7 +65,7 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 				return;
 			}
 			collector.stop();
-			await buildLeaderboardPage(context, page, wins, duration);
+			await buildLeaderboardPage(context, page, wins, duration, reply);
 		} catch (e) {
 			console.log(e);
 		}
@@ -78,22 +79,22 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 	});
 }
 
-export async function tryLeaderboardEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
+export async function tryLeaderboardEntryMessage(context: BotUserContext, message: Message, content: string): Promise<boolean> {
 	let accept = false;
-	if (message.startsWith("lb ")) {
+	if (content.startsWith("lb ")) {
 		accept = true;
-		message = message.substring(3);
+		content = content.substring(3);
 	}
-	if (message === "lb") {
+	if (content === "lb") {
 		accept = true;
 	}
-	if (message.split(" ").length > 0) {
-		if (message.split(" ")[0].slice(-1) === "d") {
-			await buildLeaderboardPage(context, 1, false, Math.max(0, Math.min(parseInt(message.split(" ")[0].slice(0, -1)), 30)));
+	if (content.split(" ").length > 0) {
+		if (content.split(" ")[0].slice(-1) === "d") {
+			await buildLeaderboardPage(context, 1, false, Math.max(0, Math.min(parseInt(content.split(" ")[0].slice(0, -1)), 30)), buildMessageReplyContext(message));
 			return true;
 		}
 	}
 	if (!accept) return false;
-	await buildLeaderboardPage(context, 1, false, -1);
+	await buildLeaderboardPage(context, 1, false, -1, buildMessageReplyContext(message));
 	return true;
 }

@@ -1,8 +1,9 @@
-import {ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, InteractionReplyOptions, Message, MessageFlags, SlashCommandBuilder, Snowflake, User} from "discord.js";
+import {ActionRowBuilder, AttachmentBuilder, BaseMessageOptions, BaseMessageOptionsWithPoll, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, InteractionEditReplyOptions, InteractionReplyOptions, Message, MessageFlags, MessagePayload, SlashCommandBuilder, Snowflake, User} from "discord.js";
 import {PointCommand, rewards} from "../PointManager.js";
 import {format} from "../util/EmbedUtil.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
 import {renderDualChart} from "../util/GraphRenderer.js";
+import {buildMessageReplyContext} from "../util/InteractionContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
@@ -10,11 +11,11 @@ export default {
 	execute: async (context: BotUserContext) => {
 		const interaction = context.base as ChatInputCommandInteraction;
 		const user: User = interaction.options.getUser("member") || interaction.user;
-		await showProfileEmbed(context, user.id, 0);
+		await showProfileEmbed(context, user.id, 0, interaction.editReply);
 	}
 } as PointCommand;
 
-export async function showProfileEmbed(context: BotUserContext, target: Snowflake, page: number, ephemeral: boolean = false) {
+export async function showProfileEmbed(context: BotUserContext, target: Snowflake, page: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
 	const provider = target === context.id ? context : getRawUser(context.guild.id, target);
 	if (!provider) return;
 	await provider.fetchMember();
@@ -47,7 +48,7 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 			}
 			break;
 	}
-	const content : InteractionReplyOptions = {
+	const content : BaseMessageOptions = {
 		embeds: [
 			embed.setAuthor({name: provider.user.tag, iconURL: provider.user.displayAvatarURL()}).setColor(Colors.Green).setTimestamp().toJSON()
 		], components: [
@@ -60,15 +61,7 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 		files: files
 	};
 
-	let msg: Message;
-	if (ephemeral && context.base && !(context.base instanceof Message)) {
-		content.flags ||= MessageFlags.Ephemeral;
-		let response = await context.base.reply(content);
-		msg = await response.fetch();
-	} else {
-		msg = await context.reply(content);
-	}
-
+	const msg: Message = await reply(content);
 	if (!context.channel) return;
 	const collector = context.channel.createMessageComponentCollector({time: 60000});
 	collector.on("collect", async i => {
@@ -78,7 +71,7 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 				await i.deferUpdate();
 				const pages = ["profile", "progress", "chart"];
 				collector.stop();
-				await showProfileEmbed(context, target, pages.indexOf(i.customId));
+				await showProfileEmbed(context, target, pages.indexOf(i.customId), reply);
 			} else {
 				return;
 			}
@@ -95,14 +88,14 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 	});
 }
 
-export async function tryProfileEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
+export async function tryProfileEntryMessage(context: BotUserContext, message: Message, content: string): Promise<boolean> {
 	let user = null;
-	if (message === "p") {
-		await showProfileEmbed(context, context.id, 0);
+	if (content === "p") {
+		await showProfileEmbed(context, context.id, 0, buildMessageReplyContext(message));
 		return true;
 	}
-	if (message.split(" ").length > 0) {
-		const arg = message.split(" ")[0];
+	if (content.split(" ").length > 0) {
+		const arg = content.split(" ")[0];
 		if (arg.startsWith("<@") && arg.endsWith(">")) {
 			user = arg.replace(/[<@!>]/g, "");
 		} else if (arg.match(/^\d+$/)) {
@@ -126,6 +119,6 @@ export async function tryProfileEntryMessage(context: BotUserContext, message: s
 		}
 	}
 	if (!user) return false;
-	await showProfileEmbed(context, user, 0);
+	await showProfileEmbed(context, user, 0, buildMessageReplyContext(message));
 	return true;
 }

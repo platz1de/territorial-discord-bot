@@ -90,13 +90,13 @@ export default {
 				const startDate = parse(start, "dd-MM-yyyy", new Date());
 				const endDate = parse(end, "dd-MM-yyyy", new Date());
 				if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-					await context.reply(createErrorEmbed(context.user, "⚠ Invalid date format! Please use `DD-MM-YYYY`"));
+					await interaction.editReply(createErrorEmbed(context.user, "⚠ Invalid date format! Please use `DD-MM-YYYY`"));
 					return;
 				}
 				if (startHour) {
 					const startHourParts = startHour.split(":");
 					if (startHourParts.length !== 2 || isNaN(parseInt(startHourParts[0])) || isNaN(parseInt(startHourParts[1]))) {
-						await context.reply(createErrorEmbed(context.user, "⚠ Invalid start hour format! Please use `HH:MM`"));
+						await interaction.editReply(createErrorEmbed(context.user, "⚠ Invalid start hour format! Please use `HH:MM`"));
 						return;
 					}
 					startDate.setHours(parseInt(startHourParts[0]), parseInt(startHourParts[1]));
@@ -106,7 +106,7 @@ export default {
 				if (endHour) {
 					const endHourParts = endHour.split(":");
 					if (endHourParts.length !== 2 || isNaN(parseInt(endHourParts[0])) || isNaN(parseInt(endHourParts[1]))) {
-						await context.reply(createErrorEmbed(context.user, "⚠ Invalid end hour format! Please use `HH:MM`"));
+						await interaction.editReply(createErrorEmbed(context.user, "⚠ Invalid end hour format! Please use `HH:MM`"));
 						return;
 					}
 					endDate.setHours(parseInt(endHourParts[0]), parseInt(endHourParts[1]));
@@ -114,7 +114,7 @@ export default {
 					endDate.setHours(23, 59, 59, 999);
 				}
 				if (startDate.getTime() > endDate.getTime()) {
-					await context.reply(createErrorEmbed(context.user, "⚠ The start date must be before the end date!"));
+					await interaction.editReply(createErrorEmbed(context.user, "⚠ The start date must be before the end date!"));
 					return;
 				}
 				timeRequestString = "&start=" + Math.floor(startDate.getTime() / 1000) + "&end=" + Math.floor(endDate.getTime() / 1000);
@@ -122,11 +122,11 @@ export default {
 		}
 		try {
 			const buffer = await renderClanChart(await fetch(config.btt_api_url + "graph/?clan=" + clans.join(",") + timeRequestString).then(req => req.json()), interaction.options.getBoolean("dark") || false);
-			await context.reply({
+			await interaction.editReply({
 				files: [new AttachmentBuilder(buffer).setName("chart.png")]
 			});
 		} catch (e) {
-			await context.reply("Failed to generate chart, please try again");
+			await interaction.editReply("Failed to generate chart, please try again");
 			console.error(e);
 		}
 	}

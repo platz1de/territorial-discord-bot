@@ -1,9 +1,10 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, MessageFlags, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
+import {ActionRowBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, MessageFlags, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
 import {logAction, PointCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {BotUserContext} from "../util/BotUserContext.js";
 import type {MultiplierSetting} from "../BotSettingProvider.js";
 import {BulkPointTransaction} from "../util/BulkPointTransaction.js";
+import {buildMessageReplyContext} from "../util/InteractionContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("addwin").setDescription("Add win to a member")
@@ -14,12 +15,12 @@ export default {
 		const user: User = interaction.options.getUser("member") || context.user;
 		const points: number = interaction.options.getInteger("points", true);
 		if (user.id !== context.user.id && !context.hasModAccess()) {
-			await context.reply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
+			await interaction.editReply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
 			return;
 		}
 		const err = await checkPointInput(points, context.user);
 		if (err) {
-			await context.reply(err);
+			await interaction.editReply(err);
 			return;
 		}
 		const multiplier = context.getActiveMultiplier();
@@ -28,12 +29,12 @@ export default {
 		if (user.id !== context.user.id) {
 			logAction(context, `Added ${points} points to ${user}`, Colors.Yellow);
 		}
-		await showAddWinEmbed(context, points, [user.id], transaction, multiplier);
+		await showAddWinEmbed(context, points, [user.id], transaction, multiplier, interaction.editReply);
 	}
 } as PointCommand;
 
-async function showAddWinEmbed(context: BotUserContext, points: number, targets: Snowflake[], transaction: BulkPointTransaction, multiplier: MultiplierSetting | null) {
-	const msg = await context.reply({
+async function showAddWinEmbed(context: BotUserContext, points: number, targets: Snowflake[], transaction: BulkPointTransaction, multiplier: MultiplierSetting | null, reply: (content: BaseMessageOptions) => Promise<Message>) {
+	const msg = await reply({
 		embeds: [
 			new EmbedBuilder().setAuthor(context.asAuthor())
 				.setDescription(transaction.getPart(context)!.buildDescription(targets.length === 1 && context.user.id === targets[0], transaction.affectedUserList(context)))
@@ -75,7 +76,7 @@ async function showAddWinEmbed(context: BotUserContext, points: number, targets:
 			await transaction.editPoints(newPoints);
 			logAction(context, `Edited ${targets.length === 1 ? `<@${targets[0]}>'s` : `<@${context.member}>'s bulk add`} win points by ${newPoints - points} (${points} -> ${newPoints})`, Colors.Yellow);
 			collector.stop();
-			await showAddWinEmbed(context, newPoints, targets, transaction, multiplier);
+			await showAddWinEmbed(context, newPoints, targets, transaction, multiplier, reply);
 			await i2.editReply({content: "✅ Points edited"});
 		}).catch(async () => {
 			//Timeout
@@ -100,9 +101,9 @@ async function checkPointInput(points: number, user: User) {
 	return false;
 }
 
-export async function tryAddEntryMessage(context: BotUserContext, message: string): Promise<boolean> {
+export async function tryAddEntryMessage(context: BotUserContext, message: Message, content: string): Promise<boolean> {
 	if (!context.getSettings().channel_id.includes(context.channel?.id || "0")) return false;
-	let args = message.split(" ");
+	let args = content.split(" ");
 	const mentions: string[] = args.filter(arg => arg.match(/<@!?(\d+)>/));
 	let targets: Snowflake[] = [];
 	if (mentions.length === 0) {
@@ -117,15 +118,15 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 	}
 	targets = targets.filter((member, index, self) => self.indexOf(member) === index);
 	if (targets.length === 0) {
-		await context.reply(createErrorEmbed(context.user, "❌ No valid members found!"));
+		await message.reply(createErrorEmbed(context.user, "❌ No valid members found!"));
 		return true;
 	}
 	if (targets.length > 1 && !context.hasModAccess()) {
-		await context.reply(createErrorEmbed(context.user, "❌ You can't add points to multiple members!"));
+		await message.reply(createErrorEmbed(context.user, "❌ You can't add points to multiple members!"));
 		return true;
 	}
 	if (targets.length > 20) {
-		await context.reply(createErrorEmbed(context.user, "❌ You can't add points to more than 20 members at once!"));
+		await message.reply(createErrorEmbed(context.user, "❌ You can't add points to more than 20 members at once!"));
 		return true;
 	}
 	args = args.filter(arg => !arg.startsWith("<@"));
@@ -142,14 +143,14 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 	}
 	const err = await checkPointInput(points, context.user);
 	if (err) {
-		await context.reply(err);
+		await message.reply(err);
 		return true;
 	}
 	const multiplier = context.getActiveMultiplier();
 	if (targets.length === 1) {
 		const target = targets[0];
 		if (target !== context.user.id && !context.hasModAccess()) {
-			await context.reply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
+			await message.reply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
 			return true;
 		}
 		if (target !== context.user.id) {
@@ -160,6 +161,6 @@ export async function tryAddEntryMessage(context: BotUserContext, message: strin
 	}
 	const transaction = new BulkPointTransaction(context.guild.id, multiplier, points, 1);
 	await Promise.all(targets.map(transaction.apply));
-	await showAddWinEmbed(context, points, targets, transaction, multiplier);
+	await showAddWinEmbed(context, points, targets, transaction, multiplier, buildMessageReplyContext(message));
 	return true;
 }

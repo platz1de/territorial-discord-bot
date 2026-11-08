@@ -1,4 +1,4 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, Snowflake} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, Snowflake} from "discord.js";
 import {BotUserContext} from "../util/BotUserContext.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {updateSettings} from "../BotSettingProvider.js";
@@ -9,8 +9,9 @@ export default {
 	slashData: new SlashCommandBuilder().setName("unsubscribefeed").setDescription("UnSubscribe from a clan win feed")
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
 		if (context.getSettings().webhooks.length === 0) {
-			await context.reply(createErrorEmbed(context.user, "⚠ You are not subscribed to any feeds!"));
+			await interaction.editReply(createErrorEmbed(context.user, "⚠ You are not subscribed to any feeds!"));
 			return;
 		}
 		let rows = [];
@@ -20,7 +21,7 @@ export default {
 			);
 			rows.push(row);
 		}
-		let msg = await context.reply({
+		let msg = await interaction.editReply({
 			embeds: [
 				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("Please select the feed you want to unsubscribe from").setTimestamp().toJSON()
 			],

@@ -1,4 +1,4 @@
-import {PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
+import {ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {GenericCommand} from "../PointManager.js";
 import {BotUserContext} from "../util/BotUserContext.js";
 import {BaseUserContext} from "../util/BaseUserContext.js";
@@ -9,8 +9,9 @@ export default {
 	slashData: new SlashCommandBuilder().setName("setup").setDescription("Start the setup assistant")
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BaseUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
 		if (context instanceof BotUserContext) {
-			await context.reply(createErrorEmbed(context.user, "This server has already been set up!"));
+			await interaction.editReply(createErrorEmbed(context.user, "This server has already been set up!"));
 			return;
 		}
 		startDialog(context);

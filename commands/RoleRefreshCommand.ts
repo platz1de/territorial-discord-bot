@@ -32,6 +32,6 @@ export default {
 		} else {
 			member.roles.add(eligible.map(r => r.role_id), "Refreshed roles").catch(console.error);
 		}
-		await context.reply("Roles refreshed");
+		await interaction.editReply("Roles refreshed");
 	}
 } as PointCommand;

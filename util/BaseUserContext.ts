@@ -1,4 +1,4 @@
-import {BaseMessageOptions, ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageContextMenuCommandInteraction, MessagePayload, Snowflake, StringSelectMenuInteraction, TextBasedChannel, User, UserContextMenuCommandInteraction} from "discord.js";
+import {ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageContextMenuCommandInteraction, Snowflake, StringSelectMenuInteraction, TextBasedChannel, User, UserContextMenuCommandInteraction} from "discord.js";
 import {Database} from "better-sqlite3";
 import {client, db} from "../PointManager.js";
 
@@ -8,7 +8,6 @@ export class BaseUserContext {
 	id: Snowflake;
 	db: Database;
 	base: Message | InteractionTypes | null;
-	last: Message | undefined;
 	user: User;
 	member: GuildMember | undefined;
 	guild: Guild;
@@ -48,19 +47,6 @@ export class BaseUserContext {
 				});
 			}
 		});
-	}
-
-	async reply(message: string | MessagePayload | BaseMessageOptions): Promise<Message> {
-		if (!this.base) throw new Error("Base not found");
-		if (this.base instanceof Message) {
-			if (this.last) {
-				return await this.last.edit(message);
-			} else {
-				return this.last = await this.base.reply(message);
-			}
-		} else {
-			return await this.base.editReply(message);
-		}
 	}
 
 	asAuthor(): { name: string, iconURL: string } {

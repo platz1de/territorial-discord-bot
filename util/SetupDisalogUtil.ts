@@ -89,7 +89,7 @@ const steps = [
 export function startDialog(context: BaseUserContext) {
 	let base = context.base as ChatInputCommandInteraction;
 	if (!context.member || !context.member.permissions.has(PermissionFlagsBits.ManageRoles) || !base.channel) {
-		context.reply({
+		base.editReply({
 			embeds: [{
 				title: "Setup failed",
 				description: "You need the `Manage Roles` permission to use this command.",
@@ -99,7 +99,7 @@ export function startDialog(context: BaseUserContext) {
 		return;
 	}
 	dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id] = {data: getDefaults(context.guild.id), step: 0};
-	sendStep(context, undefined);
+	base.editReply(buildStep(context, undefined)).catch(() => {});
 }
 
 export function hasDialog(message: Message) {
@@ -107,10 +107,11 @@ export function hasDialog(message: Message) {
 }
 
 export function handleDialog(context: BaseUserContext, message: string) {
+	let base = context.base as Message;
 	let dialogue = dialogues[context.guild?.id + ":" + context.user.id + ":" + context.channel?.id];
 	if (message.toLowerCase() === "cancel") {
 		delete dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id];
-		context.reply({
+		base.reply({
 			embeds: [{
 				title: "Setup cancelled",
 				description: "The setup has been cancelled.",
@@ -120,7 +121,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		return;
 	}
 	if (!steps[dialogue.step].validate(context, message)) {
-		context.reply({
+		base.reply({
 			embeds: [{
 				title: "Invalid input",
 				description: "Your input is invalid. Please try again.",
@@ -134,7 +135,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 	if (dialogue.step >= steps.length) {
 		delete dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id];
 		if (!context.guild) {
-			context.reply({
+			base.reply({
 				embeds: [{
 					title: "Setup failed",
 					description: "Something went wrong. Please try again.",
@@ -145,7 +146,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		}
 		setServerSetting(dialogue.data);
 		rewards.loadRewards(dialogue.data);
-		context.reply({
+		base.reply({
 			embeds: [{
 				title: "Setup finished",
 				description: `The setup has been finished. Settings can be changed using </settings show:${getCommandId("settings")}> at any point.\nIf you want to setup reward roles, you can do it there as well.`,
@@ -154,12 +155,12 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		}).catch(console.error);
 		return;
 	}
-	sendStep(context, steps[dialogue.step - 1].response(message));
+	base.reply(buildStep(context, steps[dialogue.step - 1].response(message))).catch(() => {});
 }
 
-function sendStep(context: BaseUserContext, extra?: string) {
+function buildStep(context: BaseUserContext, extra?: string) {
 	let dialogue = dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id];
-	context.reply({
+	return {
 		content: extra,
 		embeds: [{
 			title: steps[dialogue.step].question,
@@ -169,7 +170,7 @@ function sendStep(context: BaseUserContext, extra?: string) {
 				text: "Reply with your answer to this message - Type \"cancel\" to cancel the setup."
 			}
 		}]
-	}).catch(console.error);
+	};
 }
 
 function getChannelId(message: string): string {

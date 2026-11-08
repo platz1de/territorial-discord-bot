@@ -5,15 +5,16 @@ import {tryRemoveEntryMessage} from "../commands/RemoveWinCommand.js";
 import {tryProfileEntryMessage} from "../commands/ProfileCommand.js";
 import {tryMultiplierEntryMessage} from "../commands/MultiplierCommand.js";
 import {tryLeaderboardEntryMessage} from "../commands/LeaderboardCommand.js";
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, NewsChannel, TextChannel} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Message, NewsChannel, TextChannel} from "discord.js";
 import {getServerContext} from "../BotSettingProvider.js";
 
 export async function handleMessage(context: BotUserContext, message: string) {
+	const messageObj = context.base as Message;
 	if (message.startsWith("<@" + client.user?.id + ">")) message = message.substring((client.user?.id.length || 0) + 3);
 	else if (message.startsWith("<@!" + client.user?.id + ">")) message = message.substring((client.user?.id.length || 0) + 4);
 	message = message.trim();
 	if (message === "") {
-		await context.reply("Please use slash commands to interact with me.");
+		await messageObj.reply("Please use slash commands to interact with me.");
 		return;
 	}
 
@@ -22,13 +23,13 @@ export async function handleMessage(context: BotUserContext, message: string) {
 		args.shift();
 	}
 	if (args.length === 0) {
-		await context.reply("Please use slash commands to interact with me.");
+		await messageObj.reply("Please use slash commands to interact with me.");
 		return;
 	}
 
 	if (args[0].toLowerCase() === "internal_send_message" && context.user.id === config.bot_owner) {
 		let message = args.slice(1).join(" ");
-		let msg = await context.reply({
+		let msg = await messageObj.reply({
 			content: "Are you sure you want to send this message?\n\n" + message,
 			components: [
 				new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -52,13 +53,14 @@ export async function handleMessage(context: BotUserContext, message: string) {
 				if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) continue;
 				await channel.send(message).catch(() => {}).then(() => sent++);
 			}
-			await context.reply(`Sent message to ${sent} servers!`);
+			await msg.edit(`Sent message to ${sent} servers!`);
 		});
+		return;
 	}
 
-	let ret = await tryLeaderboardEntryMessage(context, message);
-	if (!ret) ret = await tryAddEntryMessage(context, message);
-	if (!ret) ret = await tryRemoveEntryMessage(context, message);
-	if (!ret) ret = await tryProfileEntryMessage(context, message);
-	if (!ret) await tryMultiplierEntryMessage(context, message);
+	let ret = await tryLeaderboardEntryMessage(context, messageObj, message);
+	if (!ret) ret = await tryAddEntryMessage(context, messageObj, message);
+	if (!ret) ret = await tryRemoveEntryMessage(context, messageObj, message);
+	if (!ret) ret = await tryProfileEntryMessage(context, messageObj, message);
+	if (!ret) await tryMultiplierEntryMessage(context, messageObj, message);
 }

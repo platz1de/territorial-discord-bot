@@ -14,18 +14,18 @@ export default {
 		const interaction = context.base as ChatInputCommandInteraction;
 		const clan = interaction.options.getString("clan", true).toUpperCase().trim();
 		if (clan.length === 0 || clan.length > 7) {
-			await context.reply(createErrorEmbed(interaction.user, "⚠ Please specify a valid clan name!"));
+			await interaction.editReply(createErrorEmbed(interaction.user, "⚠ Please specify a valid clan name!"));
 			return;
 		}
 		const channel = interaction.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
-			await context.reply(createErrorEmbed(interaction.user, "⚠ Please select a text channel!"));
+			await interaction.editReply(createErrorEmbed(interaction.user, "⚠ Please select a text channel!"));
 			return;
 		}
 		let webhook;
 		for (const w of context.getSettings().webhooks) {
 			if (w.clan === clan && w.channel === channel.id) {
-				await context.reply(createErrorEmbed(interaction.user, "⚠ You are already subscribed to that feed!"));
+				await interaction.editReply(createErrorEmbed(interaction.user, "⚠ You are already subscribed to that feed!"));
 				return;
 			}
 			if (w.channel === channel.id) {
@@ -34,18 +34,18 @@ export default {
 			}
 		}
 		if (context.getSettings().webhooks.length >= 10) {
-			await context.reply(createErrorEmbed(interaction.user, "⚠ You can only subscribe to 10 feeds at a time!"));
+			await interaction.editReply(createErrorEmbed(interaction.user, "⚠ You can only subscribe to 10 feeds at a time!"));
 			return;
 		}
 		if (!webhook) {
 			webhook = await channel.createWebhook({name: "Clan Win Feed"}).catch(() => {
-				context.reply(createErrorEmbed(interaction.user, "⚠ I don't have permission to create webhooks in that channel!"));
+				interaction.editReply(createErrorEmbed(interaction.user, "⚠ I don't have permission to create webhooks in that channel!"));
 			});
 			webhook = webhook?.url;
 		}
 		if (!webhook) return;
 		context.getSettings().webhooks.push({clan: clan, channel: channel.id, url: webhook});
-		await context.reply(createConfirmationEmbed(interaction.user, `✅ Successfully subscribed to the clan win feed for \`${clan}\` in <#${channel.id}>!`));
+		await interaction.editReply(createConfirmationEmbed(interaction.user, `✅ Successfully subscribed to the clan win feed for \`${clan}\` in <#${channel.id}>!`));
 		subscribe(clan, webhook);
 		updateSettings();
 	}

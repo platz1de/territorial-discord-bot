@@ -1,12 +1,13 @@
-import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
+import {ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder} from "discord.js";
 import {client, GenericCommand} from "../PointManager.js";
 import {BaseUserContext} from "../util/BaseUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("shortcommands").setDescription("See a command list"),
 	execute: async (context: BaseUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
 		const ping = "<@" + client.user?.id + "> ";
-		await context.reply({
+		await interaction.editReply({
 			embeds: [
 				new EmbedBuilder().setAuthor({name: client.user?.tag ?? "Unknown", iconURL: client.user?.displayAvatarURL()})
 					.setFields(

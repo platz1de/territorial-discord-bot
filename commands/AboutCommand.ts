@@ -1,4 +1,4 @@
-import {EmbedBuilder, SlashCommandBuilder} from "discord.js";
+import {ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder} from "discord.js";
 import {client, GenericCommand, getCommandId} from "../PointManager.js";
 import {format, formatTime} from "../util/EmbedUtil.js";
 import {BaseUserContext} from "../util/BaseUserContext.js";
@@ -6,8 +6,9 @@ import {BaseUserContext} from "../util/BaseUserContext.js";
 export default {
 	slashData: new SlashCommandBuilder().setName("about").setDescription("See infos about the bot"),
 	execute: async (context: BaseUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
 		const totalData = context.getTotalData();
-		context.reply({
+		interaction.editReply({
 			embeds: [
 				new EmbedBuilder().setAuthor({name: client.user?.tag ?? "Unknown", iconURL: client.user?.displayAvatarURL()})
 					.setFields(

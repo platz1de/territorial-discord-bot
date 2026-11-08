@@ -1,14 +1,15 @@
-import {SlashCommandBuilder} from "discord.js";
+import {ChatInputCommandInteraction, SlashCommandBuilder} from "discord.js";
 import {GenericCommand} from "../PointManager.js";
 import {BaseUserContext} from "../util/BaseUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("removedata").setDescription("Remove ALL your data from the bot"),
 	execute: async (context: BaseUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
 		let channel = await context.user.createDM();
-		channel.send("Are you sure you want to remove ALL your data from the bot?}\n\n**This action is irreversible!**\n\nType `yes` within the next 30 seconds to confirm, or anything else to cancel.")
+		channel.send("Are you sure you want to remove ALL your data from the bot?\n\n**This action is irreversible!**\n\nType `yes` within the next 30 seconds to confirm, or anything else to cancel.")
 			.then(async () => {
-				await context.reply("✅ I've sent you a DM!");
+				await interaction.editReply("✅ I've sent you a DM!");
 				const filter = (message: any) => message.author.id === context.user.id;
 				channel.awaitMessages({filter, max: 1, time: 30000, errors: ["time"]})
 					.then(async collected => {
@@ -16,19 +17,20 @@ export default {
 						if (message?.content.toLowerCase() === "yes") {
 							message?.react("✅");
 							await context.deleteUser();
-							await context.reply("✅ Your data has been removed!");
+							// TODO: this edit could have already timed out at this point
+							await interaction.editReply("✅ Your data has been removed!");
 							console.log(`Removed user ${context.user.tag} (${context.user.id})`);
 						} else {
 							message?.react("❌");
-							await context.reply("❌ Action cancelled!");
+							await interaction.editReply("❌ Action cancelled!");
 						}
 					})
 					.catch(async () => {
-						await context.reply("❌ Action cancelled!");
+						await interaction.editReply("❌ Action cancelled!");
 					});
 			})
 			.catch(async () => {
-				await context.reply("❌ I couldn't DM you! Make sure you have DMs enabled!");
+				await interaction.editReply("❌ I couldn't DM you! Make sure you have DMs enabled!");
 			});
 	}
 } as GenericCommand;

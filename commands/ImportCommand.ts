@@ -1,4 +1,4 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {config, getCommandId, PointCommand} from "../PointManager.js";
@@ -7,11 +7,12 @@ import {updateSettings} from "../BotSettingProvider.js";
 export default {
 	slashData: new SlashCommandBuilder().setName("import").setDescription("Import points from third-party bots").setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	execute: async (context: BotUserContext) => {
+		const interaction = context.base as ChatInputCommandInteraction;
 		if ((context.getSettings().status & 0x01) === 1) {
-			await context.reply(createErrorEmbed(context.user, `❌ This server already has points imported! If this process didn't work, please contact the bot support (see \`</about:${getCommandId("about")}>\`)`));
+			await interaction.editReply(createErrorEmbed(context.user, `❌ This server already has points imported! If this process didn't work, please contact the bot support (see \`</about:${getCommandId("about")}>\`)`));
 			return;
 		}
-		const msg = await context.reply({
+		const msg = await interaction.editReply({
 			embeds: [
 				new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setTitle("Import points from third-party bots").setDescription(`This process will import points from third-party bots.\nNOTE: Wins can't be imported from most of these bots\nPlease select the bot you used before. If that bot does not exist, try contacting support to see if we can add it (see \`</about${getCommandId("about")}>\`)`).setTimestamp().setColor(Colors.Blurple).toJSON()
 			],

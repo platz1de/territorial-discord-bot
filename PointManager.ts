@@ -1,4 +1,4 @@
-import {Client, Collection, ColorResolvable, ContextMenuCommandBuilder, EmbedBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, TextChannel, ApplicationCommandType} from "discord.js";
+import {Client, Collection, ColorResolvable, ContextMenuCommandBuilder, EmbedBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, TextChannel, ApplicationCommandType, MessageFlags} from "discord.js";
 import * as rewards from "./util/RewardManager.js";
 import * as db from "./db/DataBaseManager.js";
 import {sendUninitializedError} from "./util/EmbedUtil.js";
@@ -66,13 +66,15 @@ client.on(Events.InteractionCreate, async interaction => {
 		if (interaction.commandType === ApplicationCommandType.User) {
 			let id = interaction.targetId;
 			if (!id) return;
-			await showProfileEmbed(context, id, 0, true);
+			await interaction.deferReply({flags: MessageFlags.Ephemeral});
+			await showProfileEmbed(context, id, 0, interaction.editReply);
 		} else if (interaction.commandType === ApplicationCommandType.Message) {
 			let id = interaction.targetId;
 			if (!id) return;
 			let message = await interaction.channel?.messages.fetch(id);
 			if (!message) return;
-			await showProfileEmbed(context, message.author.id, 0, true);
+			await interaction.deferReply({flags: MessageFlags.Ephemeral});
+			await showProfileEmbed(context, message.author.id, 0, interaction.editReply);
 		}
 		return;
 	}

@@ -1,7 +1,7 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
+import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
 import {updateClanTag, updateSettings} from "../BotSettingProvider.js";
 import {client, getCommandId, PointCommand, rewards} from "../PointManager.js";
-import {BotUserContext} from "../util/BotUserContext.js";
+import {BotUserContext, LimitedServerSettings} from "../util/BotUserContext.js";
 import {getOrSendMessage} from "../util/ClaimWinChannel.js";
 
 export default {
@@ -33,11 +33,12 @@ export default {
 			await showSettingsEmbed(context, 0);
 			return;
 		}
-		await handleSetting(interaction, context, sub);
+		await handleSetting(interaction, context.getSettings(), sub);
 	}
 } as PointCommand;
 
 async function showSettingsEmbed(context: BotUserContext, page: number) {
+	const interaction = context.base as ChatInputCommandInteraction;
 	let changes = [], isCritical = false;
 	if (context.getSettings().auto_points || context.getSettings().win_feed || context.getSettings().claim_channel) {
 		if (!context.getSettings().tag) {
@@ -116,7 +117,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		.setColor(Colors.Blurple).setFooter({
 			text: "Use buttons below to navigate"
 		}).setTimestamp().toJSON());
-	let msg = await context.reply({
+	let msg = await interaction.editReply({
 		embeds,
 		components: [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -218,161 +219,162 @@ function getSettingsFields(context: BotUserContext, page: number): { name: strin
 	}
 }
 
-async function handleSetting(data: ChatInputCommandInteraction, context: BotUserContext, index: string) {
-	if (!context.base || !context.member) return;
+async function handleSetting(data: ChatInputCommandInteraction, settings: LimitedServerSettings, index: string) {
+	const member = data.member;
+	if (!(member instanceof GuildMember)) return;
 	if (index === "toggleroles") {
-		context.getSettings().roles = context.getSettings().roles === "all" ? "highest" : "all";
-		await context.reply(`Set roles to \`${context.getSettings().roles}\``);
+		settings.roles = settings.roles === "all" ? "highest" : "all";
+		await data.editReply(`Set roles to \`${settings.roles}\``);
 	} else if (index === "toggleautopoints") {
-		context.getSettings().auto_points = !context.getSettings().auto_points;
-		if (context.getSettings().auto_points) {
-			await context.reply(`Enabled automatic point management!\nMembers will automatically earn points here when playing on a compatible client.\nUse </endpoint:${getCommandId("endpoint")}> to setup the endpoint, which is required for this to function!`);
+		settings.auto_points = !settings.auto_points;
+		if (settings.auto_points) {
+			await data.editReply(`Enabled automatic point management!\nMembers will automatically earn points here when playing on a compatible client.\nUse </endpoint:${getCommandId("endpoint")}> to setup the endpoint, which is required for this to function!`);
 		} else {
-			await context.reply("Disabled automatic point management!");
+			await data.editReply("Disabled automatic point management!");
 		}
 	} else if (index === "removewinfeed") {
-		context.getSettings().win_feed = null;
-		await context.reply("Removed the win feed!");
+		settings.win_feed = null;
+		await data.editReply("Removed the win feed!");
 	} else if (index === "removeclaimchannel") {
-		context.getSettings().claim_channel = null;
-		await context.reply("Removed the claim channel!");
+		settings.claim_channel = null;
+		await data.editReply("Removed the claim channel!");
 	} else if (index === "setclaimchanneldescription") {
 		const description = data.options.getString("description", true);
-		context.getSettings().claim_channel_description = description;
-		await context.reply(`Set the claim channel description to ${description}!`);
-		await getOrSendMessage(context.getSettings());
+		settings.claim_channel_description = description;
+		await data.editReply(`Set the claim channel description to ${description}!`);
+		await getOrSendMessage(settings);
 	} else if (index === "addfactor") {
 		const name = data.options.getString("name", true);
 		const factor = data.options.getInteger("factor", true);
-		if (context.getSettings().factor_buttons.some((f) => f.name === name)) {
-			await context.reply("That factor button already exists!");
+		if (settings.factor_buttons.some((f) => f.name === name)) {
+			await data.editReply("That factor button already exists!");
 			return;
 		}
-		if (context.getSettings().factor_buttons.length >= 5) {
-			await context.reply("You can't add more than 5 factor buttons!");
+		if (settings.factor_buttons.length >= 5) {
+			await data.editReply("You can't add more than 5 factor buttons!");
 			return;
 		}
 		if (isNaN(factor) || factor < 1 || factor > 200) {
-			await context.reply("Invalid factor! Must be between 1 and 200!");
+			await data.editReply("Invalid factor! Must be between 1 and 200!");
 			return;
 		}
-		context.getSettings().factor_buttons.push({name, factor: factor / 100});
-		await context.reply(`Added the factor button ${name} with factor ${factor}%!`);
-		await getOrSendMessage(context.getSettings());
+		settings.factor_buttons.push({name, factor: factor / 100});
+		await data.editReply(`Added the factor button ${name} with factor ${factor}%!`);
+		await getOrSendMessage(settings);
 	} else if (index === "removefactor") {
 		const name = data.options.getString("name", true);
-		if (!context.getSettings().factor_buttons.some((f) => f.name === name)) {
-			await context.reply("That factor button doesn't exist!");
+		if (!settings.factor_buttons.some((f) => f.name === name)) {
+			await data.editReply("That factor button doesn't exist!");
 			return;
 		}
-		context.getSettings().factor_buttons.splice(context.getSettings().factor_buttons.findIndex((f) => f.name === name), 1);
-		await context.reply(`Removed the factor button ${name}!`);
-		await getOrSendMessage(context.getSettings());
+		settings.factor_buttons.splice(settings.factor_buttons.findIndex((f) => f.name === name), 1);
+		await data.editReply(`Removed the factor button ${name}!`);
+		await getOrSendMessage(settings);
 	} else if (index === "settag") {
 		const tag = data.options.getString("tag", true);
 		if (tag.length > 7) {
-			await context.reply("Invalid tag! Must be 7 characters or fewer!");
+			await data.editReply("Invalid tag! Must be 7 characters or fewer!");
 			return;
 		}
-		updateClanTag(context.getSettings(), tag === "" ? null : tag.toUpperCase());
-		await context.reply(`Set the clan tag to ${context.getSettings().tag || "None"}!`);
+		updateClanTag(settings, tag === "" ? null : tag.toUpperCase());
+		await data.editReply(`Set the clan tag to ${settings.tag || "None"}!`);
 	} else if (["addchannel", "removechannel", "setlogchannel", "setupdatechannel", "setwinfeed", "setclaimchannel"].includes(index)) {
 		let channel = data.options.getChannel("channel", true);
 		if (!(channel instanceof TextChannel || channel instanceof NewsChannel)) {
-			await context.reply("Invalid channel!");
+			await data.editReply("Invalid channel!");
 			return;
 		}
 		switch (index) {
 			case "addchannel":
-				if (context.getSettings().channel_id.includes(channel.id)) {
-					await context.reply("That channel is already in the whitelist!");
+				if (settings.channel_id.includes(channel.id)) {
+					await data.editReply("That channel is already in the whitelist!");
 					return;
 				}
-				context.getSettings().channel_id.push(channel.id);
-				await context.reply(`Added <#${channel.id}> to the whitelist!`);
+				settings.channel_id.push(channel.id);
+				await data.editReply(`Added <#${channel.id}> to the whitelist!`);
 				break;
 			case "removechannel":
-				if (!context.getSettings().channel_id.includes(channel.id)) {
-					await context.reply("That channel isn't in the whitelist!");
+				if (!settings.channel_id.includes(channel.id)) {
+					await data.editReply("That channel isn't in the whitelist!");
 					return;
 				}
-				context.getSettings().channel_id.splice(context.getSettings().channel_id.indexOf(channel.id), 1);
-				await context.reply(`Removed <#${channel.id}> from the whitelist!`);
+				settings.channel_id.splice(settings.channel_id.indexOf(channel.id), 1);
+				await data.editReply(`Removed <#${channel.id}> from the whitelist!`);
 				break;
 			case "setlogchannel":
-				context.getSettings().log_channel_id = channel.id;
-				await context.reply(`Set the log channel to <#${channel.id}>!`);
+				settings.log_channel_id = channel.id;
+				await data.editReply(`Set the log channel to <#${channel.id}>!`);
 				break;
 			case "setupdatechannel":
-				context.getSettings().update_channel_id = channel.id;
-				await context.reply(`Set the update channel to <#${channel.id}>!`);
+				settings.update_channel_id = channel.id;
+				await data.editReply(`Set the update channel to <#${channel.id}>!`);
 				break;
 			case "setwinfeed":
-				context.getSettings().win_feed = channel.id;
-				await context.reply(`Set the win feed to <#${channel.id}>!`);
+				settings.win_feed = channel.id;
+				await data.editReply(`Set the win feed to <#${channel.id}>!`);
 				break;
 			case "setclaimchannel":
-				context.getSettings().claim_channel = channel.id;
-				await context.reply(`Set the claim channel to <#${channel.id}>!`);
-				await getOrSendMessage(context.getSettings());
+				settings.claim_channel = channel.id;
+				await data.editReply(`Set the claim channel to <#${channel.id}>!`);
+				await getOrSendMessage(settings);
 				break;
 		}
 	} else {
 		let role = data.options.getRole("role", true);
 		if (!role) {
-			await context.reply("Invalid role!");
+			await data.editReply("Invalid role!");
 			return;
 		}
 		switch (index) {
 			case "addmodrole":
-				if (context.getSettings().mod_roles.includes(role.id)) {
-					await context.reply("That role is already in the whitelist!");
+				if (settings.mod_roles.includes(role.id)) {
+					await data.editReply("That role is already in the whitelist!");
 					return;
 				}
-				context.getSettings().mod_roles.push(role.id);
-				await context.reply(`Added <@&${role.id}> to the whitelist!`);
+				settings.mod_roles.push(role.id);
+				await data.editReply(`Added <@&${role.id}> to the whitelist!`);
 				break;
 			case "removemodrole":
-				if (!context.getSettings().mod_roles.includes(role.id)) {
-					await context.reply("That role isn't in the whitelist!");
+				if (!settings.mod_roles.includes(role.id)) {
+					await data.editReply("That role isn't in the whitelist!");
 					return;
 				}
-				context.getSettings().mod_roles.splice(context.getSettings().mod_roles.indexOf(role.id), 1);
-				await context.reply(`Removed <@&${role.id}> from the whitelist!`);
+				settings.mod_roles.splice(settings.mod_roles.indexOf(role.id), 1);
+				await data.editReply(`Removed <@&${role.id}> from the whitelist!`);
 				break;
 			case "addrewardrole":
 				const roleId = role.id;
-				if (context.getSettings().rewards.some((r) => r.role_id === roleId)) {
-					await context.reply("That role is already a reward role!");
+				if (settings.rewards.some((r) => r.role_id === roleId)) {
+					await data.editReply("That role is already a reward role!");
 					return;
 				}
-				if (context.member.roles.highest.position <= role.position && context.member.id !== context.guild.ownerId) {
-					await context.reply("You can't add a role higher than your highest role!");
+				if (member.roles.highest.position <= role.position && member.id !== member.guild.ownerId) {
+					await data.editReply("You can't add a role higher than your highest role!");
 					return;
 				}
 				let type = data.options.getInteger("type", true);
 				const amount = data.options.getInteger("amount", true);
 				if (isNaN(amount) || amount < 1) {
-					await context.reply("Invalid amount!");
+					await data.editReply("Invalid amount!");
 					return;
 				}
-				context.getSettings().rewards.push({
+				settings.rewards.push({
 					role_id: roleId,
 					type: type === 0 ? "points" : "wins",
 					count: amount
 				});
-				await context.reply(`Added <@&${roleId}> as a reward role for ${amount} ${type === 0 ? "points" : "wins"}!`);
-				rewards.loadRewards(context.getSettings());
+				await data.editReply(`Added <@&${roleId}> as a reward role for ${amount} ${type === 0 ? "points" : "wins"}!`);
+				rewards.loadRewards(settings);
 				break;
 			case "removerewardrole":
 				const roleId2 = role.id;
-				if (!context.getSettings().rewards.some((r) => r.role_id === roleId2)) {
-					await context.reply("That role isn't a reward role!");
+				if (!settings.rewards.some((r) => r.role_id === roleId2)) {
+					await data.editReply("That role isn't a reward role!");
 					return;
 				}
-				context.getSettings().rewards.splice(context.getSettings().rewards.findIndex((r) => r.role_id === roleId2), 1);
-				await context.reply(`Removed <@&${roleId2}> as a reward role!`);
-				rewards.loadRewards(context.getSettings());
+				settings.rewards.splice(settings.rewards.findIndex((r) => r.role_id === roleId2), 1);
+				await data.editReply(`Removed <@&${roleId2}> as a reward role!`);
+				rewards.loadRewards(settings);
 				break;
 		}
 	}
