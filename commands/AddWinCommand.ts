@@ -1,24 +1,23 @@
 import {ActionRowBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, Message, MessageFlags, ModalBuilder, SlashCommandBuilder, Snowflake, TextInputBuilder, TextInputStyle, User} from "discord.js";
-import {logAction, PointCommand} from "../PointManager.js";
+import {PointCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
-import {BotUserContext} from "../util/BotUserContext.js";
 import type {MultiplierSetting} from "../BotSettingProvider.js";
 import {BulkPointTransaction} from "../util/BulkPointTransaction.js";
 import {buildMessageReplyContext} from "../util/InteractionContext.js";
+import {ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("addwin").setDescription("Add win to a member")
 		.addIntegerOption(option => option.setName("points").setDescription("The amount of points to add").setRequired(true))
 		.addUserOption(option => option.setName("member").setDescription("The member to add points to")),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
-		const user: User = interaction.options.getUser("member") || context.user;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
+		const user: User = interaction.options.getUser("member") || interaction.user;
 		const points: number = interaction.options.getInteger("points", true);
-		if (user.id !== context.user.id && !context.hasModAccess()) {
-			await interaction.editReply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
+		if (user.id !== interaction.user.id && !context.hasModAccess(interaction)) {
+			await interaction.editReply(createErrorEmbed(interaction.user, "❌ You can't add points to other members!"));
 			return;
 		}
-		const err = await checkPointInput(points, context.user);
+		const err = await checkPointInput(points, interaction.user);
 		if (err) {
 			await interaction.editReply(err);
 			return;
@@ -26,19 +25,19 @@ export default {
 		const multiplier = context.getActiveMultiplier();
 		const transaction = new BulkPointTransaction(context.guild.id, multiplier, points, 1);
 		await transaction.apply(user.id);
-		if (user.id !== context.user.id) {
-			logAction(context, `Added ${points} points to ${user}`, Colors.Yellow);
+		if (user.id !== interaction.user.id) {
+			context.logAction(interaction.user, `Added ${points} points to ${user}`, Colors.Yellow);
 		}
-		await showAddWinEmbed(context, points, [user.id], transaction, multiplier, interaction.editReply);
+		await showAddWinEmbed(context, interaction.user, points, [user.id], transaction, multiplier, interaction.editReply);
 	}
 } as PointCommand;
 
-async function showAddWinEmbed(context: BotUserContext, points: number, targets: Snowflake[], transaction: BulkPointTransaction, multiplier: MultiplierSetting | null, reply: (content: BaseMessageOptions) => Promise<Message>) {
+async function showAddWinEmbed(context: ServerContext, user: User, points: number, targets: Snowflake[], transaction: BulkPointTransaction, multiplier: MultiplierSetting | null, reply: (content: BaseMessageOptions) => Promise<Message>) {
 	const msg = await reply({
 		embeds: [
-			new EmbedBuilder().setAuthor(context.asAuthor())
-				.setDescription(transaction.getPart(context)!.buildDescription(targets.length === 1 && context.user.id === targets[0], transaction.affectedUserList(context)))
-				.setTimestamp().setColor(targets.length === 1 && context.user.id === targets[0] ? Colors.Green : Colors.Yellow).toJSON()
+			new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()})
+				.setDescription(transaction.getPart(user.id)!.buildDescription(targets.length === 1 && user.id === targets[0], transaction.affectedUserList(user.id)))
+				.setTimestamp().setColor(targets.length === 1 && user.id === targets[0] ? Colors.Green : Colors.Yellow).toJSON()
 		],
 		components: [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -47,10 +46,10 @@ async function showAddWinEmbed(context: BotUserContext, points: number, targets:
 		]
 	});
 
-	if (!context.channel) return;
-	const collector = context.channel.createMessageComponentCollector({time: 120000});
+	if (!msg.channel) return;
+	const collector = msg.channel.createMessageComponentCollector({time: 120000});
 	collector.on("collect", async i => {
-		if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== context.user.id || i.customId !== "edit") return;
+		if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== user.id || i.customId !== "edit") return;
 		await i.showModal(new ModalBuilder().setTitle("Edit Points").setCustomId("edit").addComponents(
 			new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setLabel("The corrected amount of points").setCustomId("points").setPlaceholder("Points").setValue(points.toString()).setStyle(TextInputStyle.Short).setRequired(true).setMinLength(1).setMaxLength(10))
 		));
@@ -74,9 +73,9 @@ async function showAddWinEmbed(context: BotUserContext, points: number, targets:
 				return;
 			}
 			await transaction.editPoints(newPoints);
-			logAction(context, `Edited ${targets.length === 1 ? `<@${targets[0]}>'s` : `<@${context.member}>'s bulk add`} win points by ${newPoints - points} (${points} -> ${newPoints})`, Colors.Yellow);
+			context.logAction(user, `Edited ${targets.length === 1 ? `<@${targets[0]}>'s` : `<@${user.id}>'s bulk add`} win points by ${newPoints - points} (${points} -> ${newPoints})`, Colors.Yellow);
 			collector.stop();
-			await showAddWinEmbed(context, newPoints, targets, transaction, multiplier, reply);
+			await showAddWinEmbed(context, user, newPoints, targets, transaction, multiplier, reply);
 			await i2.editReply({content: "✅ Points edited"});
 		}).catch(async () => {
 			//Timeout
@@ -101,13 +100,13 @@ async function checkPointInput(points: number, user: User) {
 	return false;
 }
 
-export async function tryAddEntryMessage(context: BotUserContext, message: Message, content: string): Promise<boolean> {
-	if (!context.getSettings().channel_id.includes(context.channel?.id || "0")) return false;
+export async function tryAddEntryMessage(context: ServerContext, message: Message, content: string): Promise<boolean> {
+	if (!context.getSettings().channel_id.includes(message.channel?.id || "0")) return false;
 	let args = content.split(" ");
 	const mentions: string[] = args.filter(arg => arg.match(/<@!?(\d+)>/));
 	let targets: Snowflake[] = [];
 	if (mentions.length === 0) {
-		targets.push(context.id);
+		targets.push(message.author.id);
 	} else {
 		for (const mention of mentions) {
 			// @ts-ignore
@@ -118,15 +117,15 @@ export async function tryAddEntryMessage(context: BotUserContext, message: Messa
 	}
 	targets = targets.filter((member, index, self) => self.indexOf(member) === index);
 	if (targets.length === 0) {
-		await message.reply(createErrorEmbed(context.user, "❌ No valid members found!"));
+		await message.reply(createErrorEmbed(message.author, "❌ No valid members found!"));
 		return true;
 	}
-	if (targets.length > 1 && !context.hasModAccess()) {
-		await message.reply(createErrorEmbed(context.user, "❌ You can't add points to multiple members!"));
+	if (targets.length > 1 && !context.hasModAccess(message)) {
+		await message.reply(createErrorEmbed(message.author, "❌ You can't add points to multiple members!"));
 		return true;
 	}
 	if (targets.length > 20) {
-		await message.reply(createErrorEmbed(context.user, "❌ You can't add points to more than 20 members at once!"));
+		await message.reply(createErrorEmbed(message.author, "❌ You can't add points to more than 20 members at once!"));
 		return true;
 	}
 	args = args.filter(arg => !arg.startsWith("<@"));
@@ -141,7 +140,7 @@ export async function tryAddEntryMessage(context: BotUserContext, message: Messa
 	if (isNaN(points) || points <= 0) {
 		return false; //Not the right command probably
 	}
-	const err = await checkPointInput(points, context.user);
+	const err = await checkPointInput(points, message.author);
 	if (err) {
 		await message.reply(err);
 		return true;
@@ -149,18 +148,18 @@ export async function tryAddEntryMessage(context: BotUserContext, message: Messa
 	const multiplier = context.getActiveMultiplier();
 	if (targets.length === 1) {
 		const target = targets[0];
-		if (target !== context.user.id && !context.hasModAccess()) {
-			await message.reply(createErrorEmbed(context.user, "❌ You can't add points to other members!"));
+		if (target !== message.author.id && !context.hasModAccess(message)) {
+			await message.reply(createErrorEmbed(message.author, "❌ You can't add points to other members!"));
 			return true;
 		}
-		if (target !== context.user.id) {
-			logAction(context, `Added ${points} points to <@${target}>`, Colors.Yellow);
+		if (target !== message.author.id) {
+			context.logAction(message.author, `Added ${points} points to <@${target}>`, Colors.Yellow);
 		}
 	} else {
-		logAction(context, `Added ${points} points to ${targets.length} members`, Colors.Yellow);
+		context.logAction(message.author, `Added ${points} points to ${targets.length} members`, Colors.Yellow);
 	}
 	const transaction = new BulkPointTransaction(context.guild.id, multiplier, points, 1);
 	await Promise.all(targets.map(transaction.apply));
-	await showAddWinEmbed(context, points, targets, transaction, multiplier, buildMessageReplyContext(message));
+	await showAddWinEmbed(context, message.author, points, targets, transaction, multiplier, buildMessageReplyContext(message));
 	return true;
 }

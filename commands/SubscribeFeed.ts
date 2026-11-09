@@ -1,17 +1,16 @@
 import {ChatInputCommandInteraction, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
-import {BotUserContext} from "../util/BotUserContext.js";
 import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil.js";
 import {subscribe} from "../util/GameDataDistributor.js";
 import {updateSettings} from "../BotSettingProvider.js";
 import {PointCommand} from "../PointManager.js";
+import {ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("subscribefeed").setDescription("Subscribe to a clan win feed")
 		.addStringOption(option => option.setName("clan").setDescription("The clan name, 'all' for all clans").setRequired(true))
 		.addChannelOption(option => option.setName("channel").setDescription("The channel to send the feed to").setRequired(true))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		const clan = interaction.options.getString("clan", true).toUpperCase().trim();
 		if (clan.length === 0 || clan.length > 7) {
 			await interaction.editReply(createErrorEmbed(interaction.user, "⚠ Please specify a valid clan name!"));

@@ -1,28 +1,30 @@
-import {ActionRowBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder} from "discord.js";
+import {ActionRowBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Guild, Message, SlashCommandBuilder, User} from "discord.js";
 import {PointCommand} from "../PointManager.js";
 import {format} from "../util/EmbedUtil.js";
-import {BotUserContext} from "../util/BotUserContext.js";
+import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
 import {buildMessageReplyContext} from "../util/InteractionContext.js";
+import {ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("leaderboard").setDescription("Show the leaderboard")
 		.addIntegerOption(option => option.setName("page").setDescription("The page to view"))
 		.addIntegerOption(option => option.setName("type").setDescription("Type of leaderboard").addChoices({name: "Points", value: 0}, {name: "Wins", value: 1}))
 		.addIntegerOption(option => option.setName("duration").setDescription("The duration to view")),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		let page: number = interaction.options.getInteger("page") || 1;
 		const type: number = interaction.options.getInteger("type") || 0;
 		const duration: number = interaction.options.getInteger("duration") === null ? -1 : Math.max(0, Math.min(interaction.options.getInteger("duration") || 7, 30));
-		await buildLeaderboardPage(context, page, type === 1, duration, interaction.editReply);
+		await buildLeaderboardPage(context, interaction.user, page, type === 1, duration, interaction.editReply);
 	}
 } as PointCommand;
 
-async function buildLeaderboardPage(context: BotUserContext, page: number, wins: boolean, duration: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
+async function buildLeaderboardPage(context: ServerContext, user: User, page: number, wins: boolean, duration: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
+	const userContext = getRawUser(context.guild.id, user.id);
+	if (!userContext) return;
 	if (isNaN(duration)) duration = 7;
-	const max: number = Math.ceil((duration === -1 ? context.getAllTimeEntryCount() : context.getDailyEntryCount(duration)) / 10);
+	const max: number = Math.ceil((duration === -1 ? userContext.getAllTimeEntryCount() : userContext.getDailyEntryCount(duration)) / 10);
 	page = Math.max(1, Math.min(page, max));
-	const leaderboard = duration === -1 ? context.getAllTimeLeaderboard(wins, page) : context.getDailyLeaderboard(wins, duration, page);
+	const leaderboard = duration === -1 ? userContext.getAllTimeLeaderboard(wins, page) : userContext.getDailyLeaderboard(wins, duration, page);
 	let start = new Date(), end = new Date();
 	if (duration !== -1) {
 		start.setUTCHours(0, 0, 0, 0);
@@ -43,12 +45,12 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 		]
 	});
 
-	if (!context.channel) return;
-	const collector = context.channel.createMessageComponentCollector({time: 60000});
+	if (!msg.channel) return;
+	const collector = msg.channel.createMessageComponentCollector({time: 60000});
 	collector.on("collect", async i => {
 		try {
 			if (i instanceof ButtonInteraction) {
-				if (i.message.id !== msg.id || i.user.id !== context.user.id) return;
+				if (i.message.id !== msg.id || i.user.id !== user.id) return;
 				await i.deferUpdate();
 				switch (i.customId) {
 					case "previous":
@@ -65,7 +67,7 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 				return;
 			}
 			collector.stop();
-			await buildLeaderboardPage(context, page, wins, duration, reply);
+			await buildLeaderboardPage(context, user, page, wins, duration, reply);
 		} catch (e) {
 			console.log(e);
 		}
@@ -79,7 +81,7 @@ async function buildLeaderboardPage(context: BotUserContext, page: number, wins:
 	});
 }
 
-export async function tryLeaderboardEntryMessage(context: BotUserContext, message: Message, content: string): Promise<boolean> {
+export async function tryLeaderboardEntryMessage(context: ServerContext, message: Message, content: string): Promise<boolean> {
 	let accept = false;
 	if (content.startsWith("lb ")) {
 		accept = true;
@@ -90,11 +92,11 @@ export async function tryLeaderboardEntryMessage(context: BotUserContext, messag
 	}
 	if (content.split(" ").length > 0) {
 		if (content.split(" ")[0].slice(-1) === "d") {
-			await buildLeaderboardPage(context, 1, false, Math.max(0, Math.min(parseInt(content.split(" ")[0].slice(0, -1)), 30)), buildMessageReplyContext(message));
+			await buildLeaderboardPage(context, message.author, 1, false, Math.max(0, Math.min(parseInt(content.split(" ")[0].slice(0, -1)), 30)), buildMessageReplyContext(message));
 			return true;
 		}
 	}
 	if (!accept) return false;
-	await buildLeaderboardPage(context, 1, false, -1, buildMessageReplyContext(message));
+	await buildLeaderboardPage(context, message.author, 1, false, -1, buildMessageReplyContext(message));
 	return true;
 }

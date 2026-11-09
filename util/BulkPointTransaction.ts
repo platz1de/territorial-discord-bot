@@ -1,6 +1,6 @@
 import {Snowflake} from "discord.js";
 import {createPointTransaction, PointTransaction} from "./PointTransaction.js";
-import {BotUserContext, getRawUser} from "./BotUserContext.js";
+import {getRawUser} from "./BotUserContext.js";
 import {MultiplierSetting} from "../BotSettingProvider.js";
 
 type TransactionPart = {transaction: PointTransaction, factor: number};
@@ -40,12 +40,12 @@ export class BulkPointTransaction {
 		this.parts.set(userId, {transaction: await createPointTransaction(getRawUser(this.guildId, userId)!, this.multiplier, this.points * factor, this.wins), factor});
 	}
 
-	getAppliedFactor(user: BotUserContext) : number | undefined {
-		return this.parts.get(user.id)?.factor;
+	getAppliedFactor(user: Snowflake) : number | undefined {
+		return this.parts.get(user)?.factor;
 	}
 
-	getPart(context: BotUserContext): PointTransaction | undefined {
-		return this.parts.get(context.id)?.transaction;
+	getPart(user: Snowflake): PointTransaction | undefined {
+		return this.parts.get(user)?.transaction;
 	}
 
 	// TODO: Move these...
@@ -54,9 +54,9 @@ export class BulkPointTransaction {
 		return `${original}\n\n**Claimed by:**"\n${Array.from(this.parts, ([user, part]) => part.factor === 1 ? `<@${user}>` : `<@${user}> \`x ${part.factor}\``).join("\n")}`;
 	}
 
-	affectedUserList(context: BotUserContext) {
+	affectedUserList(user: Snowflake) {
 		if (this.parts.size === 1) {
-			return this.parts.values().next().value!.transaction.longMemberString(this.parts.has(context.user.id));
+			return this.parts.values().next().value!.transaction.longMemberString(this.parts.has(user));
 		}
 		return `\n${Array.from(this.parts.values(), part => part.transaction.shortMemberString()).join("\n")}`;
 	}

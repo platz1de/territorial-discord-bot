@@ -1,17 +1,16 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, Snowflake} from "discord.js";
-import {BotUserContext} from "../util/BotUserContext.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {updateSettings} from "../BotSettingProvider.js";
 import {unsubscribe} from "../util/GameDataDistributor.js";
 import {PointCommand} from "../PointManager.js";
+import {ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("unsubscribefeed").setDescription("UnSubscribe from a clan win feed")
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		if (context.getSettings().webhooks.length === 0) {
-			await interaction.editReply(createErrorEmbed(context.user, "⚠ You are not subscribed to any feeds!"));
+			await interaction.editReply(createErrorEmbed(interaction.user, "⚠ You are not subscribed to any feeds!"));
 			return;
 		}
 		let rows = [];
@@ -23,16 +22,16 @@ export default {
 		}
 		let msg = await interaction.editReply({
 			embeds: [
-				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("Please select the feed you want to unsubscribe from").setTimestamp().toJSON()
+				new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription("Please select the feed you want to unsubscribe from").setTimestamp().toJSON()
 			],
 			components: rows
 		}).catch(() => {});
 		if (!msg) return;
 
-		if (!context.channel) return;
-		const collector = context.channel.createMessageComponentCollector({time: 120000});
+		if (!interaction.channel) return;
+		const collector = interaction.channel.createMessageComponentCollector({time: 120000});
 		collector.on("collect", async i => {
-			if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== context.user.id) return;
+			if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== interaction.user.id) return;
 			await i.deferUpdate();
 			const webhook = context.getSettings().webhooks.find((webhook: { clan: string, channel: Snowflake }) => webhook.clan + " ".repeat(10) + webhook.channel === i.customId);
 			if (!webhook) return;
@@ -41,7 +40,7 @@ export default {
 			updateSettings();
 			await msg.edit({
 				embeds: [
-					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(`Successfully unsubscribed from the clan win feed for \`${webhook.clan}\` in <#${webhook.channel}>!`).setTimestamp().toJSON()
+					new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(`Successfully unsubscribed from the clan win feed for \`${webhook.clan}\` in <#${webhook.channel}>!`).setTimestamp().toJSON()
 				],
 				components: []
 			}).catch(() => {});

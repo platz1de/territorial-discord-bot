@@ -1,8 +1,8 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedBuilder, GuildMember, Interaction, Message, MessageFlags, NewsChannel, StringSelectMenuBuilder, TextChannel} from "discord.js";
-import {BotUserContext, getUser, LimitedServerSettings} from "./BotUserContext.js";
 import {client} from "../PointManager.js";
 import {getCacheForClan} from "./GameDataDistributor.js";
 import {BulkPointTransaction} from "./BulkPointTransaction.js";
+import {createServerContext, LimitedServerSettings} from "./ServerContext.js";
 
 export async function getOrSendMessage(context: LimitedServerSettings) {
 	if (!context.claim_channel) return;
@@ -52,13 +52,13 @@ export async function getOrSendMessage(context: LimitedServerSettings) {
 export async function handleChannelInteraction(interaction: Interaction) {
 	if (interaction.isButton() && interaction.member instanceof GuildMember) {
 		if (interaction.customId !== "claim_channel" && !interaction.customId.startsWith("claim_channel_factor_")) return;
-		const context = getUser(interaction.member, interaction);
-		if (!(context instanceof BotUserContext)) return;
+		const context = createServerContext(interaction.guild);
+		if (!context) return;
 		let clan = context.getSettings().tag;
 		if (!clan) {
 			interaction.reply({
 				embeds: [
-					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("This server does not have a clan tag set!").setColor(Colors.Red).setTimestamp().toJSON()
+					new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription("This server does not have a clan tag set!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
 				flags: MessageFlags.Ephemeral
 			}).catch(() => {});
@@ -68,7 +68,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		if (choices.length === 0) {
 			interaction.reply({
 				embeds: [
-					new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("There were no games won recently!").setColor(Colors.Red).setTimestamp().toJSON()
+					new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription("There were no games won recently!").setColor(Colors.Red).setTimestamp().toJSON()
 				],
 				flags: MessageFlags.Ephemeral
 			}).catch(() => {});
@@ -81,7 +81,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		let clanTag = clan;
 		interaction.reply({
 			embeds: [
-				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("Please select a game to claim the win for!").setColor(Colors.Blue).setTimestamp().toJSON()
+				new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription("Please select a game to claim the win for!").setColor(Colors.Blue).setTimestamp().toJSON()
 			],
 			components: [
 				new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -94,8 +94,8 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		}).catch(() => {});
 	} else if (interaction.isStringSelectMenu() && interaction.member instanceof GuildMember) {
 		if (interaction.customId !== "claim_channel") return;
-		const context = getUser(interaction.member, interaction);
-		if (!(context instanceof BotUserContext)) return;
+		const context = createServerContext(interaction.guild);
+		if (!context) return;
 		let value = interaction.values[0];
 		let parts = value.split("-");
 		let contest = parts[0] === "cont";
@@ -104,18 +104,19 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		let factor = parts[3];
 
 		const transaction = new BulkPointTransaction(context.guild.id, context.getActiveMultiplier(), points, 1);
-		await transaction.apply(context.user.id, factor !== "n" && context.getSettings().factor_buttons[parseInt(factor)] ? context.getSettings().factor_buttons[parseInt(factor)].factor : 1);
+		await transaction.apply(interaction.user.id, factor !== "n" && context.getSettings().factor_buttons[parseInt(factor)] ? context.getSettings().factor_buttons[parseInt(factor)].factor : 1);
 		interaction.reply({
 			embeds: [
-				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(transaction.getPart(context)!.buildDescription(true)).setColor(Colors.Green).setTimestamp().toJSON()
+				new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(transaction.getPart(interaction.user.id)!.buildDescription(true)).setColor(Colors.Green).setTimestamp().toJSON()
 			],
 			flags: MessageFlags.Ephemeral
 		}).catch(() => {});
+		// TODO: make this channel configurable
 		let channel = client.channels.cache.get(context.getSettings().channel_id[0]);
 		if (channel && channel instanceof TextChannel) {
 			channel.send({
 				embeds: [
-					new EmbedBuilder().setAuthor({name: context.user.tag + " via Claim", iconURL: context.user.displayAvatarURL()}).setDescription(transaction.getPart(context)!.buildDescription(false)).setTimestamp().setColor(Colors.Green).setFooter({text: "Action was taken after button press"}).toJSON()
+					new EmbedBuilder().setAuthor({name: interaction.user.tag + " via Claim", iconURL: interaction.user.displayAvatarURL()}).setDescription(transaction.getPart(interaction.user.id)!.buildDescription(false)).setTimestamp().setColor(Colors.Green).setFooter({text: "Action was taken after button press"}).toJSON()
 				]
 			}).catch(() => {});
 		}

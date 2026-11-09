@@ -1,7 +1,7 @@
-import {ChatInputCommandInteraction, Colors, EmbedBuilder, Message, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
-import {logAction, PointCommand} from "../PointManager.js";
-import {BotUserContext} from "../util/BotUserContext.js";
+import {ChatInputCommandInteraction, Colors, EmbedBuilder, Message, PermissionFlagsBits, SlashCommandBuilder, User} from "discord.js";
+import {PointCommand} from "../PointManager.js";
 import {createConfirmationEmbed, createErrorEmbed} from "../util/EmbedUtil.js";
+import {ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("multiplier").setDescription("Modify the current multiplier")
@@ -16,20 +16,19 @@ export default {
 		)
 		.addSubcommand(sub => sub.setName("info").setDescription("Show the current multiplier"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		const subcommand = interaction.options.getSubcommand();
 		switch (subcommand) {
 			case "set":
 				if (context.getActiveMultiplier() !== null) {
-					await interaction.editReply(createErrorEmbed(context.user, "A multiplier is already set, clear that one first!"));
+					await interaction.editReply(createErrorEmbed(interaction.user, "A multiplier is already set, clear that one first!"));
 					return;
 				}
 				let multiplier = interaction.options.getNumber("multiplier", true);
 				let description = interaction.options.getString("description", true);
 				let end = interaction.options.getString("end");
 				if (isNaN(multiplier) || multiplier < 0 || multiplier > 100) {
-					await interaction.editReply(createErrorEmbed(context.user, "Multiplier must be at least 0 and at most 100"));
+					await interaction.editReply(createErrorEmbed(interaction.user, "Multiplier must be at least 0 and at most 100"));
 					return;
 				}
 				multiplier = Math.round(multiplier * 100) / 100;
@@ -37,59 +36,59 @@ export default {
 				if (end) {
 					const date = new Date(end + " UTC");
 					if (isNaN(date.getTime())) {
-						await interaction.editReply(createErrorEmbed(context.user, "Invalid date"));
+						await interaction.editReply(createErrorEmbed(interaction.user, "Invalid date"));
 						return;
 					}
 					processedEnd = date.getTime();
 				}
 				context.setMultiplier({amount: multiplier, end: processedEnd, description});
-				logAction(context, `Multiplier set to ${multiplier}x`, Colors.Yellow);
-				await interaction.editReply(createConfirmationEmbed(context.user, `Set multiplier to ${multiplier}x with description \`${description}\`${processedEnd ? ` ending at <t:${Math.min(processedEnd / 1000)}>` : ""}`));
+				context.logAction(interaction.user, `Multiplier set to ${multiplier}x`, Colors.Yellow);
+				await interaction.editReply(createConfirmationEmbed(interaction.user, `Set multiplier to ${multiplier}x with description \`${description}\`${processedEnd ? ` ending at <t:${Math.min(processedEnd / 1000)}>` : ""}`));
 				break;
 			case "clear":
 				context.clearMultiplier();
-				logAction(context, `Multiplier cleared`, Colors.Red);
-				await interaction.editReply(createConfirmationEmbed(context.user, `Cleared the multiplier!`));
+				context.logAction(interaction.user, `Multiplier cleared`, Colors.Red);
+				await interaction.editReply(createConfirmationEmbed(interaction.user, `Cleared the multiplier!`));
 				break;
 			case "setend":
 				const currentMultiplier = context.getActiveMultiplier();
 				if (!currentMultiplier) {
-					await interaction.editReply(createErrorEmbed(context.user, `No multiplier set`));
+					await interaction.editReply(createErrorEmbed(interaction.user, `No multiplier set`));
 					return;
 				}
 				const endString = interaction.options.getString("date", true);
 				const date = new Date(endString + " UTC");
 				if (isNaN(date.getTime())) {
-					await interaction.editReply(createErrorEmbed(context.user, `Invalid date`));
+					await interaction.editReply(createErrorEmbed(interaction.user, `Invalid date`));
 					return;
 				}
 				currentMultiplier.end = date.getTime();
 				context.setMultiplier(currentMultiplier);
-				logAction(context, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
-				await interaction.editReply(createConfirmationEmbed(context.user, `Set multiplier end date to <t:${Math.min(date.getTime() / 1000)}>`));
+				context.logAction(interaction.user, `Multiplier end date set to <t:${Math.min(date.getTime() / 1000)}>`, Colors.Yellow);
+				await interaction.editReply(createConfirmationEmbed(interaction.user, `Set multiplier end date to <t:${Math.min(date.getTime() / 1000)}>`));
 				break;
 			case "info":
-				await interaction.editReply(buildMultiplierInformation(context));
+				await interaction.editReply(buildMultiplierInformation(context, interaction.user));
 		}
 	}
 } as PointCommand;
 
-function buildMultiplierInformation(context: BotUserContext) {
+function buildMultiplierInformation(context: ServerContext, user: User) {
 	const multiplier = context.getActiveMultiplier();
 	if (!multiplier) {
-		return {embeds: [new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()}).setDescription(`No multiplier is currently active`).setTimestamp().setColor(Colors.Blurple).toJSON()]};
+		return {embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setDescription(`No multiplier is currently active`).setTimestamp().setColor(Colors.Blurple).toJSON()]};
 	}
 	return {
-		embeds: [new EmbedBuilder().setAuthor({name: context.user.tag, iconURL: context.user.displayAvatarURL()})
+		embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()})
 			.setFields(
 				{name: `${multiplier.amount}x Multiplier`, value: `${multiplier.description}\n${multiplier.end ? `Ending in <t:${Math.min(multiplier.end / 1000)}:R>` : `No end set yet`}\nHappy grinding 🚀`, inline: true},
 			).setTimestamp().setColor(Colors.Blurple).toJSON()]
 	};
 }
 
-export async function tryMultiplierEntryMessage(context: BotUserContext, messageObj: Message, content: string) : Promise<boolean> {
+export async function tryMultiplierEntryMessage(context: ServerContext, message: Message, content: string) : Promise<boolean> {
 	if (["mult", "multi", "multiplier", "boost", "double", "x2"].includes(content)) {
-		await messageObj.reply(buildMultiplierInformation(context));
+		await message.reply(buildMultiplierInformation(context, message.author));
 		return true;
 	}
 	return false;

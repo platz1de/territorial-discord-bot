@@ -1,7 +1,6 @@
 import {AttachmentBuilder, ChatInputCommandInteraction, SlashCommandBuilder} from "discord.js";
 import {config, GenericCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
-import {BotUserContext} from "../util/BotUserContext.js";
 import {renderClanChart} from "../util/GraphRenderer.js";
 import {parse} from "date-fns";
 
@@ -63,8 +62,7 @@ export default {
 			.addStringOption(option => option.setName("clan9").setDescription("Additional clan"))
 			.addStringOption(option => option.setName("clan10").setDescription("Additional clan"))
 		),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction) => {
 		let clans: string[] = [interaction.options.getString("clan", true).toUpperCase()];
 		for (let i = 0; i < 9; i++) {
 			const clan = interaction.options.getString(`clan${i + 2}`);
@@ -90,13 +88,13 @@ export default {
 				const startDate = parse(start, "dd-MM-yyyy", new Date());
 				const endDate = parse(end, "dd-MM-yyyy", new Date());
 				if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-					await interaction.editReply(createErrorEmbed(context.user, "⚠ Invalid date format! Please use `DD-MM-YYYY`"));
+					await interaction.editReply(createErrorEmbed(interaction.user, "⚠ Invalid date format! Please use `DD-MM-YYYY`"));
 					return;
 				}
 				if (startHour) {
 					const startHourParts = startHour.split(":");
 					if (startHourParts.length !== 2 || isNaN(parseInt(startHourParts[0])) || isNaN(parseInt(startHourParts[1]))) {
-						await interaction.editReply(createErrorEmbed(context.user, "⚠ Invalid start hour format! Please use `HH:MM`"));
+						await interaction.editReply(createErrorEmbed(interaction.user, "⚠ Invalid start hour format! Please use `HH:MM`"));
 						return;
 					}
 					startDate.setHours(parseInt(startHourParts[0]), parseInt(startHourParts[1]));
@@ -106,7 +104,7 @@ export default {
 				if (endHour) {
 					const endHourParts = endHour.split(":");
 					if (endHourParts.length !== 2 || isNaN(parseInt(endHourParts[0])) || isNaN(parseInt(endHourParts[1]))) {
-						await interaction.editReply(createErrorEmbed(context.user, "⚠ Invalid end hour format! Please use `HH:MM`"));
+						await interaction.editReply(createErrorEmbed(interaction.user, "⚠ Invalid end hour format! Please use `HH:MM`"));
 						return;
 					}
 					endDate.setHours(parseInt(endHourParts[0]), parseInt(endHourParts[1]));
@@ -114,7 +112,7 @@ export default {
 					endDate.setHours(23, 59, 59, 999);
 				}
 				if (startDate.getTime() > endDate.getTime()) {
-					await interaction.editReply(createErrorEmbed(context.user, "⚠ The start date must be before the end date!"));
+					await interaction.editReply(createErrorEmbed(interaction.user, "⚠ The start date must be before the end date!"));
 					return;
 				}
 				timeRequestString = "&start=" + Math.floor(startDate.getTime() / 1000) + "&end=" + Math.floor(endDate.getTime() / 1000);

@@ -1,9 +1,9 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors, EmbedBuilder, GuildMember, Interaction, Message, MessageFlags, NewsChannel, Snowflake, TextChannel} from "discord.js";
 import {client} from "../PointManager.js";
 import {getGuildsForClan, getServerContext} from "../BotSettingProvider.js";
-import {BotUserContext, getUser} from "./BotUserContext.js";
 import {ClanGame} from "./ClanGame.js";
 import {BulkPointTransaction} from "./BulkPointTransaction.js";
+import {createServerContext} from "./ServerContext.js";
 
 let messageCache: { [key: Snowflake]: { msg: Message, timestamp: number, original: string, transaction: BulkPointTransaction } } = {};
 
@@ -42,8 +42,8 @@ export async function sendToFeed(clan: string, message: string, points: number, 
 export async function handleFeedInteraction(interaction: Interaction) {
 	if (!interaction.isButton() || !(interaction.member instanceof GuildMember)) return;
 	if (interaction.customId !== "claim" && !interaction.customId.startsWith("claim_factor_")) return;
-	const context = getUser(interaction.member, interaction);
-	if (!(context instanceof BotUserContext)) return;
+	const context = createServerContext(interaction.guild);
+	if (!context) return;
 	const message = interaction.message;
 	if (!message) return;
 	if (!messageCache[message.id]) return;
@@ -58,10 +58,10 @@ export async function handleFeedInteraction(interaction: Interaction) {
 	}
 
 	//Already claimed with this factor
-	if (cache.transaction.getAppliedFactor(context) == factorInt) {
+	if (cache.transaction.getAppliedFactor(interaction.user.id) == factorInt) {
 		interaction.reply({
 			embeds: [
-				new EmbedBuilder().setAuthor(context.asAuthor()).setDescription("You have already claimed this win!").setColor(Colors.Red).setTimestamp().toJSON()
+				new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription("You have already claimed this win!").setColor(Colors.Red).setTimestamp().toJSON()
 			],
 			flags: MessageFlags.Ephemeral
 		}).catch(() => {});
@@ -72,7 +72,7 @@ export async function handleFeedInteraction(interaction: Interaction) {
 	await cache.msg.edit({content: cache.transaction.claimedUserList(cache.original)});
 	interaction.reply({
 		embeds: [
-			new EmbedBuilder().setAuthor(context.asAuthor()).setDescription(cache.transaction.getPart(context)!.buildDescription(true)).setColor(Colors.Green).setTimestamp().toJSON()
+			new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(cache.transaction.getPart(interaction.user.id)!.buildDescription(true)).setColor(Colors.Green).setTimestamp().toJSON()
 		],
 		flags: MessageFlags.Ephemeral
 	}).catch(() => {});

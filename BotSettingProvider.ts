@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import {Snowflake} from "discord.js";
 import {rewards} from "./PointManager.js";
-import {LimitedServerSettings} from "./util/BotUserContext.js";
 import {subscribe} from "./util/GameDataDistributor.js";
 
 export interface MultiplierSetting {
@@ -30,6 +29,7 @@ export interface ServerSetting {
 }
 
 import rawSettings from "./settings.json" with {type: "json"};
+import {LimitedServerSettings} from "./util/ServerContext.js";
 const settings = rawSettings.map((raw: Partial<ServerSetting>) => {
 	if (!raw.guild_id) throw new Error("Found guild settings without a guild_id");
 	return {...getDefaults(raw.guild_id), ...raw};

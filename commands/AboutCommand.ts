@@ -1,15 +1,14 @@
 import {ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder} from "discord.js";
 import {client, GenericCommand, getCommandId} from "../PointManager.js";
 import {format, formatTime} from "../util/EmbedUtil.js";
-import {BaseUserContext} from "../util/BaseUserContext.js";
-import {BotUserContext} from "../util/BotUserContext.js";
+import {getRawUser} from "../util/BotUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("about").setDescription("See infos about the bot"),
-	execute: async (context: BaseUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction) => {
 		let fields = [];
-		if (context instanceof BotUserContext) {
+		const context = getRawUser(interaction.guildId, interaction.user.id);
+		if (context) {
 			const totalData = context.getTotalData();
 			fields.push({name: "Stats", value: `Tracking ${format(context.getAllTimeEntryCount())} members totalling ${format(totalData.points)} points with ${format(totalData.wins)} wins`});
 		}

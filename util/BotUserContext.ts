@@ -1,11 +1,8 @@
 import {Guild, GuildBasedChannel, GuildMember, Message, Snowflake} from "discord.js";
 import {client, rewards} from "../PointManager.js";
-import {getServerContext, ServerSetting, updateSettings} from "../BotSettingProvider.js";
+import {getServerContext, ServerSetting} from "../BotSettingProvider.js";
 import {RewardAnswer} from "./RewardManager.js";
 import {BaseUserContext, InteractionTypes} from "./BaseUserContext.js";
-import type {MultiplierSetting} from "../BotSettingProvider.js";
-
-export type LimitedServerSettings = Omit<ServerSetting, "multiplier">;
 
 // TODO: Extract guild-logic
 export class BotUserContext extends BaseUserContext {
@@ -14,40 +11,6 @@ export class BotUserContext extends BaseUserContext {
 	constructor(id: Snowflake, context: ServerSetting, base: Message | InteractionTypes | null) {
 		super(id, base, (base && base.guild) ? null : client.guilds.cache.get(context.guild_id) as Guild);
 		this.context = context;
-	}
-
-	// TODO: Replace usages of this with utility methods that handle the logic
-	getSettings(): LimitedServerSettings {
-		return this.context;
-	}
-
-	hasModAccess(): boolean {
-		if (!this.member) return false;
-		for (const role of this.member.roles.cache.values() || []) {
-			if (this.context.mod_roles.includes(role.id)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	getActiveMultiplier(): MultiplierSetting | null {
-		if (this.context.multiplier === null) return null;
-		if (this.context.multiplier.end !== null && this.context.multiplier.end < Date.now()) {
-			this.context.multiplier = null;
-			updateSettings();
-		}
-		return this.context.multiplier;
-	}
-
-	setMultiplier(multiplier: MultiplierSetting) {
-		this.context.multiplier = multiplier;
-		updateSettings();
-	}
-
-	clearMultiplier() {
-		this.context.multiplier = null;
-		updateSettings();
 	}
 
 	getWinFeedChannel() : GuildBasedChannel | undefined {
@@ -179,7 +142,10 @@ export function getUser(member: GuildMember, base: InteractionTypes | Message): 
 	return new BotUserContext(member.id, context, base);
 }
 
-export function getRawUser(guild: Snowflake, user: Snowflake): BotUserContext | null {
+export function getRawUser(guild: Snowflake | null, user: Snowflake): BotUserContext | null {
+	if (!guild) {
+		return null;
+	}
 	const context = getServerContext(guild);
 	if (!context) {
 		return null;

@@ -4,22 +4,22 @@ import {BaseUserContext} from "../util/BaseUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("removedata").setDescription("Remove ALL your data from the bot"),
-	execute: async (context: BaseUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
-		let channel = await context.user.createDM();
+	execute: async (interaction: ChatInputCommandInteraction) => {
+		let channel = await interaction.user.createDM();
 		channel.send("Are you sure you want to remove ALL your data from the bot?\n\n**This action is irreversible!**\n\nType `yes` within the next 30 seconds to confirm, or anything else to cancel.")
 			.then(async () => {
 				await interaction.editReply("✅ I've sent you a DM!");
-				const filter = (message: any) => message.author.id === context.user.id;
+				const filter = (message: any) => message.author.id === interaction.user.id;
 				channel.awaitMessages({filter, max: 1, time: 30000, errors: ["time"]})
 					.then(async collected => {
 						let message = collected.first();
 						if (message?.content.toLowerCase() === "yes") {
 							message?.react("✅");
-							await context.deleteUser();
+							const userContext = new BaseUserContext(interaction.user.id, null, interaction.guild);
+							await userContext.deleteUser();
 							// TODO: this edit could have already timed out at this point
 							await interaction.editReply("✅ Your data has been removed!");
-							console.log(`Removed user ${context.user.tag} (${context.user.id})`);
+							console.log(`Removed user ${interaction.user.tag} (${interaction.user.id})`);
 						} else {
 							message?.react("❌");
 							await interaction.editReply("❌ Action cancelled!");

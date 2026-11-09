@@ -1,6 +1,7 @@
 import {ButtonInteraction, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageContextMenuCommandInteraction, Snowflake, StringSelectMenuInteraction, TextBasedChannel, User, UserContextMenuCommandInteraction} from "discord.js";
 import {Database} from "better-sqlite3";
 import {client, db} from "../PointManager.js";
+import {createServerContext} from "./ServerContext.js";
 
 export type InteractionTypes = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction | MessageContextMenuCommandInteraction | UserContextMenuCommandInteraction;
 
@@ -51,6 +52,10 @@ export class BaseUserContext {
 
 	asAuthor(): { name: string, iconURL: string } {
 		return {name: this.user.tag, iconURL: this.user.displayAvatarURL()};
+	}
+
+	toServerContext() {
+		return createServerContext(this.guild)!;
 	}
 
 	async deleteUser() {

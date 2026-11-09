@@ -1,22 +1,22 @@
-import {ActionRowBuilder, AttachmentBuilder, BaseMessageOptions, BaseMessageOptionsWithPoll, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, InteractionEditReplyOptions, InteractionReplyOptions, Message, MessageFlags, MessagePayload, SlashCommandBuilder, Snowflake, User} from "discord.js";
+import {ActionRowBuilder, AttachmentBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
 import {PointCommand, rewards} from "../PointManager.js";
 import {format} from "../util/EmbedUtil.js";
-import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
+import {getRawUser} from "../util/BotUserContext.js";
 import {renderDualChart} from "../util/GraphRenderer.js";
 import {buildMessageReplyContext} from "../util/InteractionContext.js";
+import {ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
 		.addUserOption(option => option.setName("member").setDescription("The member to view")),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		const user: User = interaction.options.getUser("member") || interaction.user;
-		await showProfileEmbed(context, user.id, 0, interaction.editReply);
+		await showProfileEmbed(context, interaction.user, user.id, 0, interaction.editReply);
 	}
 } as PointCommand;
 
-export async function showProfileEmbed(context: BotUserContext, target: Snowflake, page: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
-	const provider = target === context.id ? context : getRawUser(context.guild.id, target);
+export async function showProfileEmbed(context: ServerContext, user: User, target: Snowflake, page: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
+	const provider = getRawUser(context.guild.id, target);
 	if (!provider) return;
 	await provider.fetchMember();
 	const embed = new EmbedBuilder();
@@ -62,16 +62,16 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 	};
 
 	const msg: Message = await reply(content);
-	if (!context.channel) return;
-	const collector = context.channel.createMessageComponentCollector({time: 60000});
+	if (!msg.channel) return;
+	const collector = msg.channel.createMessageComponentCollector({time: 60000});
 	collector.on("collect", async i => {
 		try {
 			if (i instanceof ButtonInteraction) {
-				if (i.message.id !== msg.id || i.user.id !== context.user.id) return;
+				if (i.message.id !== msg.id || i.user.id !== user.id) return;
 				await i.deferUpdate();
 				const pages = ["profile", "progress", "chart"];
 				collector.stop();
-				await showProfileEmbed(context, target, pages.indexOf(i.customId), reply);
+				await showProfileEmbed(context, user, target, pages.indexOf(i.customId), reply);
 			} else {
 				return;
 			}
@@ -88,10 +88,10 @@ export async function showProfileEmbed(context: BotUserContext, target: Snowflak
 	});
 }
 
-export async function tryProfileEntryMessage(context: BotUserContext, message: Message, content: string): Promise<boolean> {
+export async function tryProfileEntryMessage(context: ServerContext, message: Message, content: string): Promise<boolean> {
 	let user = null;
 	if (content === "p") {
-		await showProfileEmbed(context, context.id, 0, buildMessageReplyContext(message));
+		await showProfileEmbed(context, message.author, message.author.id, 0, buildMessageReplyContext(message));
 		return true;
 	}
 	if (content.split(" ").length > 0) {
@@ -119,6 +119,6 @@ export async function tryProfileEntryMessage(context: BotUserContext, message: M
 		}
 	}
 	if (!user) return false;
-	await showProfileEmbed(context, user, 0, buildMessageReplyContext(message));
+	await showProfileEmbed(context, message.author, user, 0, buildMessageReplyContext(message));
 	return true;
 }

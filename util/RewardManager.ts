@@ -1,6 +1,6 @@
-import {Colors, Snowflake} from "discord.js";
-import {logAction} from "../PointManager.js";
-import {BotUserContext, LimitedServerSettings} from "./BotUserContext.js";
+import {Colors, GuildMember, Snowflake} from "discord.js";
+import {BotUserContext} from "./BotUserContext.js";
+import {LimitedServerSettings, ServerContext} from "./ServerContext.js";
 
 let rewards: { [key: string]: Reward[] } = {};
 let hierarchy: { [key: string]: number[] } = {};
@@ -81,12 +81,14 @@ export function loadRewards(setting: LimitedServerSettings) {
 
 export async function checkChanges(context: BotUserContext, type: string, from: number, to: number): Promise<RewardAnswer[]> {
 	await context.fetchMember();
+	if (!context.member) return [];
+
 	let changes: RewardAnswer[] = [];
 	for (const reward of rewards[context.guild.id]) {
-		changes = reward.checkChange(context, type, from, to, changes);
+		changes = reward.checkChange(context.toServerContext(), context.member, type, from, to, changes);
 	}
 
-	if (context.getSettings().roles === "highest") {
+	if (context.toServerContext().getSettings().roles === "highest") {
 		setTimeout(() => applyHierarchy(context, changes), 2000);
 	}
 
@@ -150,16 +152,16 @@ export class Reward {
 		this.count = count;
 	}
 
-	checkChange(context: BotUserContext, type: string, from: number, to: number, changes: RewardAnswer[]) {
-		if (this.type !== type || !context.member) return changes;
+	checkChange(context: ServerContext, member: GuildMember, type: string, from: number, to: number, changes: RewardAnswer[]) {
+		if (this.type !== type) return changes;
 		if (from < this.count && to >= this.count) {
-			context.member.roles.add(this.role_id, `Reward for reaching ${this.count} ${this.type}`).then(() => {
-				logAction(context, `Added role <@&${this.role_id}> for reaching ${this.count} ${this.type}`, Colors.Blurple);
+			member.roles.add(this.role_id, `Reward for reaching ${this.count} ${this.type}`).then(() => {
+				context.logAction(member.user, `Added role <@&${this.role_id}> for reaching ${this.count} ${this.type}`, Colors.Blurple);
 			}).catch(console.error);
 			changes.push({type: "Added", role_type: this.type, role_amount: this.count, role_id: this.role_id});
 		} else if (from >= this.count && to < this.count) {
-			context.member.roles.remove(this.role_id, `Reward for reaching ${this.count} ${this.type} was removed do to no longer meeting the requirement`).then(() => {
-				logAction(context, `Removed role <@&${this.role_id}> for no longer meeting criteria`, Colors.Blurple);
+			member.roles.remove(this.role_id, `Reward for reaching ${this.count} ${this.type} was removed do to no longer meeting the requirement`).then(() => {
+				context.logAction(member.user, `Removed role <@&${this.role_id}> for no longer meeting criteria`, Colors.Blurple);
 			}).catch(console.error);
 			changes.push({type: "Removed", role_type: this.type, role_amount: this.count, role_id: this.role_id});
 		}

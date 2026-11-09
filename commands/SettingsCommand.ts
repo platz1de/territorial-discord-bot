@@ -1,8 +1,8 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, GuildMember, NewsChannel, PermissionFlagsBits, SlashCommandBuilder, TextChannel} from "discord.js";
 import {updateClanTag, updateSettings} from "../BotSettingProvider.js";
 import {client, getCommandId, PointCommand, rewards} from "../PointManager.js";
-import {BotUserContext, LimitedServerSettings} from "../util/BotUserContext.js";
 import {getOrSendMessage} from "../util/ClaimWinChannel.js";
+import {LimitedServerSettings, ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("settings").setDescription("Change server settings")
@@ -26,31 +26,33 @@ export default {
 		.addSubcommand(sub => sub.setName("settag").setDescription("Set the clan tag").addStringOption(option => option.setName("tag").setDescription("The tag to set").setRequired(true)))
 		.addSubcommand(sub => sub.setName("show").setDescription("Show the current settings"))
 		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		const sub = interaction.options.getSubcommand();
 		if (sub === "show") {
-			await showSettingsEmbed(context, 0);
+			await showSettingsEmbed(interaction, context, 0);
 			return;
 		}
 		await handleSetting(interaction, context.getSettings(), sub);
 	}
 } as PointCommand;
 
-async function showSettingsEmbed(context: BotUserContext, page: number) {
-	const interaction = context.base as ChatInputCommandInteraction;
+async function showSettingsEmbed(interaction: ChatInputCommandInteraction, context: ServerContext, page: number) {
+	const settings = context.getSettings();
+	const guild = context.guild;
+	if (!guild) return;
+
 	let changes = [], isCritical = false;
-	if (context.getSettings().auto_points || context.getSettings().win_feed || context.getSettings().claim_channel) {
-		if (!context.getSettings().tag) {
+	if (settings.auto_points || settings.win_feed || settings.claim_channel) {
+		if (!settings.tag) {
 			changes.push(`This server doesn't have a clan tag set! Use </settings settag:${getCommandId("settings")}> to set it!`);
 			isCritical = true;
 		}
 	}
-	for (const id of context.getSettings().channel_id) {
-		const channel = context.guild.channels.cache.get(id);
+	for (const id of settings.channel_id) {
+		const channel = guild.channels.cache.get(id);
 		if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
 			changes.push(`Removed invalid channel ${id} from the win channels`);
-			context.getSettings().channel_id.splice(context.getSettings().channel_id.indexOf(id), 1);
+			settings.channel_id.splice(settings.channel_id.indexOf(id), 1);
 		} else {
 			if (channel.permissionsFor(client.user!)?.has(PermissionFlagsBits.ReadMessageHistory) !== true || channel.permissionsFor(client.user!)?.has(PermissionFlagsBits.ViewChannel) !== true) {
 				changes.push(`I don't have permission to read messages in ${channel}`);
@@ -60,7 +62,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 			}
 		}
 	}
-	const logChannel = context.guild.channels.cache.get(context.getSettings().log_channel_id);
+	const logChannel = guild.channels.cache.get(settings.log_channel_id);
 	if (!logChannel || !(logChannel instanceof TextChannel || logChannel instanceof NewsChannel)) {
 		changes.push(`Invalid log channel ${logChannel}`);
 	} else {
@@ -68,7 +70,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 			changes.push(`I don't have permission to send messages in ${logChannel}`);
 		}
 	}
-	const updateChannel = context.guild.channels.cache.get(context.getSettings().update_channel_id);
+	const updateChannel = guild.channels.cache.get(settings.update_channel_id);
 	if (!updateChannel || !(updateChannel instanceof TextChannel || updateChannel instanceof NewsChannel)) {
 		changes.push(`Invalid update channel ${updateChannel}`);
 	} else {
@@ -76,9 +78,9 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 			changes.push(`I don't have permission to send messages in ${updateChannel}`);
 		}
 	}
-	const winFeed = context.getSettings().win_feed;
+	const winFeed = settings.win_feed;
 	if (winFeed) {
-		const channel = context.guild.channels.cache.get(winFeed);
+		const channel = guild.channels.cache.get(winFeed);
 		if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
 			changes.push(`Invalid win feed ${channel}`);
 		} else {
@@ -87,23 +89,23 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 			}
 		}
 	}
-	for (const role of context.getSettings().mod_roles) {
-		if (!context.guild.roles.cache.has(role)) {
+	for (const role of settings.mod_roles) {
+		if (!guild.roles.cache.has(role)) {
 			changes.push(`Removed invalid role ${role} from the mod roles`);
-			context.getSettings().mod_roles.splice(context.getSettings().mod_roles.indexOf(role), 1);
+			settings.mod_roles.splice(settings.mod_roles.indexOf(role), 1);
 		}
 	}
-	if (context.getSettings().rewards.length !== 0) {
-		if (!context.guild.members.cache.get(client.user!.id)?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+	if (settings.rewards.length !== 0) {
+		if (!guild.members.cache.get(client.user!.id)?.permissions.has(PermissionFlagsBits.ManageRoles)) {
 			changes.push("I don't have permission to manage roles");
 		}
 	}
-	for (const role of context.getSettings().rewards) {
-		if (!context.guild.roles.cache.has(role.role_id)) {
+	for (const role of settings.rewards) {
+		if (!guild.roles.cache.has(role.role_id)) {
 			changes.push(`Removed invalid role ${role.role_id} from the reward roles`);
-			context.getSettings().rewards.splice(context.getSettings().rewards.indexOf(role), 1);
-			rewards.loadRewards(context.getSettings());
-		} else if (context.guild.roles.cache.get(role.role_id)?.editable !== true) {
+			settings.rewards.splice(settings.rewards.indexOf(role), 1);
+			rewards.loadRewards(settings);
+		} else if (guild.roles.cache.get(role.role_id)?.editable !== true) {
 			changes.push(`I don't have permission to give out <@&${role.role_id}>`);
 		}
 	}
@@ -111,7 +113,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 	if (changes.length > 0) {
 		embeds.push(new EmbedBuilder().setTitle("Warning").setDescription(changes.join("\n")).setColor(isCritical ? Colors.Red : Colors.Yellow).toJSON());
 	}
-	embeds.push(new EmbedBuilder().setAuthor({name: context.guild.name, iconURL: context.guild.iconURL() || undefined})
+	embeds.push(new EmbedBuilder().setAuthor({name: guild.name, iconURL: guild.iconURL() || undefined})
 		.setTitle(["Point Management Settings", "Win Claiming Settings", "Channel Settings", "Role Settings"][page])
 		.addFields(getSettingsFields(context, page))
 		.setColor(Colors.Blurple).setFooter({
@@ -129,13 +131,13 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 		]
 	});
 
-	if (!context.channel) return;
-	const collector = context.channel.createMessageComponentCollector({time: 120000});
+	if (!msg.channel) return;
+	const collector = msg.channel.createMessageComponentCollector({time: 120000});
 	collector.on("collect", async i => {
-		if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== context.user.id) return;
+		if (!(i instanceof ButtonInteraction) || i.message.id !== msg.id || i.user.id !== interaction.user.id) return;
 		await i.deferUpdate();
 		collector.stop();
-		await showSettingsEmbed(context, ["settings:p", "settings:w", "settings:c", "settings:r"].indexOf(i.customId));
+		await showSettingsEmbed(interaction, context, ["settings:p", "settings:w", "settings:c", "settings:r"].indexOf(i.customId));
 	});
 
 	collector.on("end", async (collected, reason) => {
@@ -146,7 +148,7 @@ async function showSettingsEmbed(context: BotUserContext, page: number) {
 	});
 }
 
-function getSettingsFields(context: BotUserContext, page: number): { name: string, value: string }[] {
+function getSettingsFields(context: ServerContext, page: number): { name: string, value: string }[] {
 	const settings = context.getSettings();
 	switch (page) {
 		case 0:

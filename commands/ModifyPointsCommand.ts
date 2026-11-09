@@ -1,8 +1,9 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, User} from "discord.js";
-import {logAction, PointCommand} from "../PointManager.js";
+import {PointCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
-import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
+import {getRawUser} from "../util/BotUserContext.js";
 import {createPointTransaction} from "../util/PointTransaction.js";
+import {ServerContext} from "../util/ServerContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("modifypoints").setDescription("Modify points of a member")
@@ -13,12 +14,11 @@ export default {
 		))
 		.addIntegerOption(option => option.setName("points").setDescription("The amount of points to modify").setRequired(true))
 		.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
-	execute: async (context: BotUserContext) => {
-		const interaction = context.base as ChatInputCommandInteraction;
+	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		const user: User = interaction.options.getUser("member", true);
 		let points: number = interaction.options.getInteger("points", true);
 		const type: number = interaction.options.getInteger("type", true);
-		if (!context.hasModAccess()) {
+		if (!context.hasModAccess(interaction)) {
 			await interaction.editReply(createErrorEmbed(interaction.user, "❌ You don't have the permission to remove points!"));
 			return;
 		}
@@ -27,7 +27,7 @@ export default {
 			return;
 		}
 		const transaction = await createPointTransaction(getRawUser(context.guild.id, user.id)!, null, type === 0 ? points : 0, type === 0 ? 0 : points);
-		logAction(context, `Modified ${type === 0 ? "points" : "wins"} from ${user} by ${points}`, Colors.Yellow);
+		context.logAction(interaction.user, `Modified ${type === 0 ? "points" : "wins"} from ${user} by ${points}`, Colors.Yellow);
 		await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(transaction.buildDescription(false)).setTimestamp().setColor(Colors.Yellow).toJSON()]});
 	}
 } as PointCommand;
