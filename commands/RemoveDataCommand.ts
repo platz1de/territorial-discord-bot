@@ -1,6 +1,6 @@
 import {ChatInputCommandInteraction, SlashCommandBuilder} from "discord.js";
 import {GenericCommand} from "../PointManager.js";
-import {BaseUserContext} from "../util/BaseUserContext.js";
+import {db} from "../db/DataBaseManager.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("removedata").setDescription("Remove ALL your data from the bot"),
@@ -15,8 +15,7 @@ export default {
 						let message = collected.first();
 						if (message?.content.toLowerCase() === "yes") {
 							message?.react("✅");
-							const userContext = new BaseUserContext(interaction.user.id, null, interaction.guild);
-							await userContext.deleteUser();
+							db.control.deleteUser({member: interaction.user.id});
 							// TODO: this edit could have already timed out at this point
 							await interaction.editReply("✅ Your data has been removed!");
 							console.log(`Removed user ${interaction.user.tag} (${interaction.user.id})`);

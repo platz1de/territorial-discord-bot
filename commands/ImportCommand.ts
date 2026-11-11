@@ -1,9 +1,9 @@
 import {ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, PermissionFlagsBits, SlashCommandBuilder, User} from "discord.js";
-import {getRawUser} from "../util/BotUserContext.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
 import {config, getCommandId, PointCommand} from "../PointManager.js";
 import {updateSettings} from "../BotSettingProvider.js";
 import {ServerContext} from "../util/ServerContext.js";
+import {createPointTransaction} from "../util/PointTransaction.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("import").setDescription("Import points from third-party bots").setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -71,9 +71,7 @@ function importUnbelievaBoat(context: ServerContext, user: User, msg: Message, p
 		const users = data.users;
 		const promises = [];
 		for (const user of users) {
-			const u = getRawUser(context.guild.id, user.user_id);
-			if (!u) continue;
-			promises.push(u?.modifyData(user.total, 0));
+			promises.push(createPointTransaction(user.user_id, context.guild, null, user.total, 0));
 		}
 		await Promise.all(promises);
 		await msg.reply({embeds: [new EmbedBuilder().setAuthor({name: user.tag, iconURL: user.displayAvatarURL()}).setTitle("Import points from third-party bots").setDescription(`Successfully imported ${data.users.length} users!`).setTimestamp().setColor(Colors.Green).toJSON()]});

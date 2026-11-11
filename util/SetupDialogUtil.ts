@@ -1,8 +1,6 @@
 import {getDefaults, ServerSetting, setServerSetting} from "../BotSettingProvider.js";
 import {ChatInputCommandInteraction, GuildMember, Message, PermissionFlagsBits} from "discord.js";
 import {getCommandId, rewards} from "../PointManager.js";
-import {BaseUserContext} from "./BaseUserContext.js";
-import {ServerContext} from "./ServerContext.js";
 
 interface SetupDialog {
 	data: ServerSetting,
@@ -15,8 +13,8 @@ const steps = [
 	{
 		question: "What is your win submission channel?",
 		description: "The bot will only listen to point commands in that channel. You can add more channels later.\nProfile and leaderboard commands will always work in every channel.\nPlease respond with a channel mention or id.",
-		validate: (context: ServerContext, message: string) => {
-			return context.guild.channels.cache.has(getChannelId(message));
+		validate: (message: Message<true>) => {
+			return message.guild.channels.cache.has(getChannelId(message.content));
 		},
 		response: (message: string) => {
 			return `Set win submission channel to <#${getChannelId(message)}>.`;
@@ -28,8 +26,8 @@ const steps = [
 	{
 		question: "What is your log channel?",
 		description: "The bot will send a message to that channel whenever moderator commands are used.\nPlease respond with a channel mention or id.",
-		validate: (context: ServerContext, message: string) => {
-			return context.guild.channels.cache.has(getChannelId(message));
+		validate: (message: Message<true>) => {
+			return message.guild.channels.cache.has(getChannelId(message.content));
 		},
 		response: (message: string) => {
 			return `Set log channel to <#${getChannelId(message)}>.`;
@@ -41,8 +39,8 @@ const steps = [
 	{
 		question: "What is your role for moderators?",
 		description: "Users with this role will be able to use moderator commands. You can add more roles later.\nPlease respond with a role mention or id.",
-		validate: (context: ServerContext, message: string) => {
-			return context.guild.roles.cache.has(getRoleId(message));
+		validate: (message: Message<true>) => {
+			return message.guild.roles.cache.has(getRoleId(message.content));
 		},
 		response: (message: string) => {
 			return `Set moderator role to <@&${getRoleId(message)}>.`;
@@ -54,8 +52,8 @@ const steps = [
 	{
 		question: "Is your role system cumulative or incremental?",
 		description: "Cumulative: Users will get all roles they have enough points for. Answer with `all` or `c`\nIncremental: Users will only get the highest role they have enough points for. Answer with `inc` or `i`",
-		validate: (context: ServerContext, message: string) => {
-			return message.toLowerCase() === "inc" || message.toLowerCase() === "i" || message.toLowerCase() === "all" || message.toLowerCase() === "c";
+		validate: (message: Message<true>) => {
+			return ["inc", "i", "all", "c"].includes(message.content.toLowerCase());
 		},
 		response: (message: string) => {
 			if (message.toLowerCase() === "inc" || message.toLowerCase() === "i") {
@@ -75,8 +73,8 @@ const steps = [
 	{
 		question: "Please set a channel for bot updates.",
 		description: "The bot will send a message to that channel whenever important updates are released. It's recommended to use your staff channel here.\nPlease respond with a channel mention or id.",
-		validate: (context: ServerContext, message: string) => {
-			return context.guild.channels.cache.has(getChannelId(message));
+		validate: (message: Message<true>) => {
+			return message.guild.channels.cache.has(getChannelId(message.content));
 		},
 		response: (message: string) => {
 			return `Set update channel to <#${getChannelId(message)}>.`;
@@ -106,12 +104,11 @@ export function hasDialog(message: Message) {
 	return dialogues.hasOwnProperty(message.guild?.id + ":" + message.author.id + ":" + message.channel?.id);
 }
 
-export function handleDialog(context: BaseUserContext, message: string) {
-	let base = context.base as Message;
-	let dialogue = dialogues[context.guild?.id + ":" + context.user.id + ":" + context.channel?.id];
-	if (message.toLowerCase() === "cancel") {
-		delete dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id];
-		base.reply({
+export function handleDialog(message: Message<true>) {
+	let dialogue = dialogues[message.guildId + ":" + message.author.id + ":" + message.channelId];
+	if (message.content.toLowerCase() === "cancel") {
+		delete dialogues[message.guildId + ":" + message.author.id + ":" + message.channelId];
+		message.reply({
 			embeds: [{
 				title: "Setup cancelled",
 				description: "The setup has been cancelled.",
@@ -120,8 +117,8 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		}).catch(console.error);
 		return;
 	}
-	if (!steps[dialogue.step].validate(context.toServerContext(), message)) {
-		base.reply({
+	if (!steps[dialogue.step].validate(message)) {
+		message.reply({
 			embeds: [{
 				title: "Invalid input",
 				description: "Your input is invalid. Please try again.",
@@ -130,12 +127,13 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		}).catch(console.error);
 		return;
 	}
-	steps[dialogue.step].handle(dialogue.data, message);
+	steps[dialogue.step].handle(dialogue.data, message.content);
 	dialogue.step++;
 	if (dialogue.step >= steps.length) {
-		delete dialogues[context.guild.id + ":" + context.user.id + ":" + context.channel?.id];
-		if (!context.guild) {
-			base.reply({
+		delete dialogues[message.guildId + ":" + message.author.id + ":" + message.channelId];
+		// TODO: isn't this impossible?
+		if (!message.guild) {
+			message.reply({
 				embeds: [{
 					title: "Setup failed",
 					description: "Something went wrong. Please try again.",
@@ -146,7 +144,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		}
 		setServerSetting(dialogue.data);
 		rewards.loadRewards(dialogue.data);
-		base.reply({
+		message.reply({
 			embeds: [{
 				title: "Setup finished",
 				description: `The setup has been finished. Settings can be changed using </settings show:${getCommandId("settings")}> at any point.\nIf you want to setup reward roles, you can do it there as well.`,
@@ -155,7 +153,7 @@ export function handleDialog(context: BaseUserContext, message: string) {
 		}).catch(console.error);
 		return;
 	}
-	base.reply(buildStep(dialogue.step, steps[dialogue.step - 1].response(message))).catch(() => {});
+	message.reply(buildStep(dialogue.step, steps[dialogue.step - 1].response(message.content))).catch(() => {});
 }
 
 function buildStep(step: number, extra?: string) {

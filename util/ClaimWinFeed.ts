@@ -35,7 +35,7 @@ export async function sendToFeed(clan: string, message: string, points: number, 
 		}).catch(() => {});
 		if (!msg) continue;
 		// TODO: Migrate this to getActiveMultiplier
-		messageCache[msg.id] = {msg, timestamp: Date.now(), original: message, transaction: new BulkPointTransaction(guild, context.multiplier, points, 1)};
+		messageCache[msg.id] = {msg, timestamp: Date.now(), original: message, transaction: new BulkPointTransaction(g, context.multiplier, points, 1)};
 	}
 }
 

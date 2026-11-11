@@ -1,7 +1,7 @@
 import {ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {GenericCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
-import {startDialog} from "../util/SetupDisalogUtil.js";
+import {startDialog} from "../util/SetupDialogUtil.js";
 import {createServerContext} from "../util/ServerContext.js";
 
 export default {

@@ -1,7 +1,6 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
 import {PointCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
-import {getRawUser} from "../util/BotUserContext.js";
 import {createPointTransaction, PointTransaction} from "../util/PointTransaction.js";
 import {ServerContext} from "../util/ServerContext.js";
 
@@ -22,7 +21,7 @@ export default {
 			return;
 		}
 		const multiplier = context.getActiveMultiplier();
-		const transaction = await createPointTransaction(getRawUser(context.guild.id, user.id)!, multiplier, -points, -1);
+		const transaction = await createPointTransaction(user.id, context.guild, multiplier, -points, -1);
 		if (user.id !== interaction.user.id) {
 			context.logAction(interaction.user, `Removed win of ${points} points from ${user}`, Colors.Yellow);
 		}
@@ -85,7 +84,7 @@ export async function tryRemoveEntryMessage(context: ServerContext, message: Mes
 		return true;
 	}
 	const multiplier = context.getActiveMultiplier();
-	const transaction = await createPointTransaction(getRawUser(context.guild.id, target)!, multiplier, -points, -1);
+	const transaction = await createPointTransaction(target, context.guild, multiplier, -points, -1);
 	if (target !== message.author.id) {
 		context.logAction(message.author, `Removed win of ${points} points from <@${target}>`, Colors.Yellow);
 	}

@@ -33,7 +33,20 @@ import("date-fns").then((fns) => {
 	});
 });
 
-export async function renderDualChart(data: { day: string, wins: number, points: number }[]): Promise<Buffer> {
+export async function renderDualChart(data: { day: string, wins: number, points: number }[], duration: number): Promise<Buffer> {
+	//Add missing days
+	let filledData: { day: string, points: number, wins: number }[] = [];
+	let date = new Date();
+	date.setHours(0, 0, 0, 0);
+	date.setDate(date.getDate() + 1);
+	for (let i = 0; i <= duration; i++) {
+		let day = date.toISOString().split("T")[0];
+		let entry = data.find((entry) => entry.day === day);
+		filledData.push(entry || {day: day, points: 0, wins: 0});
+		date.setDate(date.getDate() - 1);
+	}
+	data = filledData.reverse();
+
 	const config = {
 		type: "line",
 		data: {

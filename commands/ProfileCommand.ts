@@ -1,10 +1,10 @@
 import {ActionRowBuilder, AttachmentBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder, Snowflake, User} from "discord.js";
-import {PointCommand, rewards} from "../PointManager.js";
+import {client, PointCommand, rewards} from "../PointManager.js";
 import {format} from "../util/EmbedUtil.js";
-import {getRawUser} from "../util/BotUserContext.js";
 import {renderDualChart} from "../util/GraphRenderer.js";
 import {buildMessageReplyContext} from "../util/InteractionContext.js";
 import {ServerContext} from "../util/ServerContext.js";
+import {db} from "../db/DataBaseManager.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("profile").setDescription("See a member's profile")
@@ -16,22 +16,21 @@ export default {
 } as PointCommand;
 
 export async function showProfileEmbed(context: ServerContext, user: User, target: Snowflake, page: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
-	const provider = getRawUser(context.guild.id, target);
-	if (!provider) return;
-	await provider.fetchMember();
 	const embed = new EmbedBuilder();
 	let files: AttachmentBuilder[] = [];
 	switch (page) {
 		case 0:
-			const global = provider.getData();
-			const last = provider.getDailyData(14);
+			const global = db.total.get({guild: context.guild.id, member: target});
+			const globalRank = db.total.rank({guild: context.guild.id, member: target});
+			const daily = db.daily.get({guild: context.guild.id, member: target, duration: 14});
+			const dailyRank = db.daily.rank({guild: context.guild.id, member: target, duration: 14});
 			embed.addFields(
-				{name: "Lifetime", value: `Points: ${format(global.points)} (#${provider.getAllTimePointRank()})\nWins: ${format(global.wins)} (#${provider.getAllTimeWinRank()})`, inline: true},
-				{name: "Last 14 Days", value: `Points: ${format(last.points)} (#${provider.getDailyPointRank(14)})\nWins: ${format(last.wins)} (#${provider.getDailyWinRank(14)})`, inline: true}
+				{name: "Lifetime", value: `Points: ${format(global.points)} (#${globalRank.points + 1})\nWins: ${format(global.wins)} (#${globalRank.wins + 1})`, inline: true},
+				{name: "Last 14 Days", value: `Points: ${format(daily.points)} (#${dailyRank.points + 1})\nWins: ${format(daily.wins)} (#${dailyRank.wins + 1})`, inline: true}
 			);
 			break;
 		case 1:
-			const next: { role: Snowflake, has: number, needs: number }[] = await rewards.getProgress(provider);
+			const next: { role: Snowflake, has: number, needs: number }[] = await rewards.getProgress(target, context.guild);
 			embed.addFields(
 				next.length > 0 ? {name: "Next Reward", value: next.map(r => `<@&${r.role}>\n[${'🟦'.repeat(Math.floor(r.has / r.needs * 10))}${'⬜'.repeat(10 - Math.floor(r.has / r.needs * 10))}] ${r.has}/${r.needs} (${Math.floor(r.has / r.needs * 100)}%)`).join("\n\n")}
 					: {name: "All done", value: "You already have all the rewards, good job!"}
@@ -39,7 +38,7 @@ export async function showProfileEmbed(context: ServerContext, user: User, targe
 			break;
 		case 2:
 			try {
-				const buffer = await renderDualChart(provider.getLegacyData(30));
+				const buffer = await renderDualChart(db.daily.history({guild: context.guild.id, member: target, duration: 30}), 30);
 				files.push(new AttachmentBuilder(buffer).setName("chart.png"));
 				embed.setImage("attachment://chart.png");
 			} catch (e) {
@@ -48,9 +47,10 @@ export async function showProfileEmbed(context: ServerContext, user: User, targe
 			}
 			break;
 	}
+	const targetUser = await client.users.fetch(target);
 	const content : BaseMessageOptions = {
 		embeds: [
-			embed.setAuthor({name: provider.user.tag, iconURL: provider.user.displayAvatarURL()}).setColor(Colors.Green).setTimestamp().toJSON()
+			embed.setAuthor({name: targetUser.tag, iconURL: targetUser.displayAvatarURL()}).setColor(Colors.Green).setTimestamp().toJSON()
 		], components: [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder().setCustomId("profile").setEmoji("👤").setStyle(ButtonStyle.Primary).setDisabled(page === 0),

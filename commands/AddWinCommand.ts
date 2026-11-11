@@ -23,7 +23,7 @@ export default {
 			return;
 		}
 		const multiplier = context.getActiveMultiplier();
-		const transaction = new BulkPointTransaction(context.guild.id, multiplier, points, 1);
+		const transaction = new BulkPointTransaction(context.guild, multiplier, points, 1);
 		await transaction.apply(user.id);
 		if (user.id !== interaction.user.id) {
 			context.logAction(interaction.user, `Added ${points} points to ${user}`, Colors.Yellow);
@@ -158,7 +158,7 @@ export async function tryAddEntryMessage(context: ServerContext, message: Messag
 	} else {
 		context.logAction(message.author, `Added ${points} points to ${targets.length} members`, Colors.Yellow);
 	}
-	const transaction = new BulkPointTransaction(context.guild.id, multiplier, points, 1);
+	const transaction = new BulkPointTransaction(context.guild, multiplier, points, 1);
 	await Promise.all(targets.map(transaction.apply));
 	await showAddWinEmbed(context, message.author, points, targets, transaction, multiplier, buildMessageReplyContext(message));
 	return true;

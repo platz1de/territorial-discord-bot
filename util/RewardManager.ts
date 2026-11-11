@@ -1,6 +1,6 @@
-import {Colors, GuildMember, Snowflake} from "discord.js";
-import {BotUserContext} from "./BotUserContext.js";
-import {LimitedServerSettings, ServerContext} from "./ServerContext.js";
+import {Colors, Guild, GuildMember, Snowflake} from "discord.js";
+import {createServerContext, LimitedServerSettings, ServerContext} from "./ServerContext.js";
+import {db} from "../db/DataBaseManager.js";
 
 let rewards: { [key: string]: Reward[] } = {};
 let hierarchy: { [key: string]: number[] } = {};
@@ -12,18 +12,18 @@ export interface RewardAnswer {
 	role_id: string
 }
 
-export function getRewardList(context: BotUserContext): Reward[] {
+export function getRewardList(guild: Guild): Reward[] {
 	let list: Reward[] = [];
-	for (const reward of hierarchy[context.guild.id]) {
-		list.push(rewards[context.guild.id][reward]);
+	for (const reward of hierarchy[guild.id]) {
+		list.push(rewards[guild.id][reward]);
 	}
 	return list;
 }
 
-export async function calculateEligibleRoles(context: BotUserContext) {
-	const total = context.getData();
+export async function calculateEligibleRoles(member: Snowflake, guild: Guild) {
+	const total = db.total.get({guild: guild.id, member});
 	const roles: Reward[] = [];
-	for (const reward of rewards[context.guild.id]) {
+	for (const reward of rewards[guild.id]) {
 		if (total[reward.type] >= reward.count) {
 			roles.push(reward);
 		}
@@ -49,11 +49,11 @@ export function filterByHierarchy(roles: Reward[]): Reward[] {
 	return filtered;
 }
 
-export async function getProgress(context: BotUserContext): Promise<{ role: Snowflake, has: number, needs: number }[]> {
-	const total = context.getData();
+export async function getProgress(member: Snowflake, guild: Guild): Promise<{ role: Snowflake, has: number, needs: number }[]> {
+	const total = db.total.get({guild: guild.id, member});
 	const progress: { role: Snowflake, has: number, needs: number }[] = [];
-	for (const id of hierarchy[context.guild.id]) {
-		const reward = rewards[context.guild.id][id];
+	for (const id of hierarchy[guild.id]) {
+		const reward = rewards[guild.id][id];
 		if (total[reward.type] < reward.count) {
 			if (progress[(reward.type === "points" ? 0 : 1)]) continue;
 			progress[(reward.type === "points" ? 0 : 1)] = {role: reward.role_id, has: total[reward.type], needs: reward.count};
@@ -79,28 +79,28 @@ export function loadRewards(setting: LimitedServerSettings) {
 	hierarchy[setting.guild_id] = winCache.concat(pointCache);
 }
 
-export async function checkChanges(context: BotUserContext, type: string, from: number, to: number): Promise<RewardAnswer[]> {
-	await context.fetchMember();
-	if (!context.member) return [];
+export async function checkChanges(member: GuildMember, type: string, from: number, to: number): Promise<RewardAnswer[]> {
+	const context = createServerContext(member.guild);
+	if (!context) return [];
 
 	let changes: RewardAnswer[] = [];
-	for (const reward of rewards[context.guild.id]) {
-		changes = reward.checkChange(context.toServerContext(), context.member, type, from, to, changes);
+	for (const reward of rewards[member.guild.id]) {
+		changes = reward.checkChange(context, member, type, from, to, changes);
 	}
 
-	if (context.toServerContext().getSettings().roles === "highest") {
-		setTimeout(() => applyHierarchy(context, changes), 2000);
+	if (context.getSettings().roles === "highest") {
+		setTimeout(() => applyHierarchy(member, changes), 2000);
 	}
 
 	return changes;
 }
 
-function applyHierarchy(context: BotUserContext, changes: RewardAnswer[]) {
-	if (changes.length === 0 || !context.member) return;
+function applyHierarchy(member: GuildMember, changes: RewardAnswer[]) {
+	if (changes.length === 0) return;
 	let lowestPoints = Infinity;
 	let lowestWins = Infinity;
 	for (const reward of changes) {
-		const index = hierarchy[context.guild.id].findIndex(r => r === rewards[context.guild.id].findIndex(r => r.role_id === reward.role_id));
+		const index = hierarchy[member.guild.id].findIndex(r => r === rewards[member.guild.id].findIndex(r => r.role_id === reward.role_id));
 		if (index === -1) {
 			throw new Error("Reward not found in hierarchy");
 		}
@@ -110,21 +110,21 @@ function applyHierarchy(context: BotUserContext, changes: RewardAnswer[]) {
 			lowestWins = index;
 		}
 	}
-	const replacePoints = hierarchy[context.guild.id][lowestPoints - 1];
-	const replaceWins = hierarchy[context.guild.id][lowestWins - 1];
+	const replacePoints = hierarchy[member.guild.id][lowestPoints - 1];
+	const replaceWins = hierarchy[member.guild.id][lowestWins - 1];
 	if (changes[0].type === "Added") {
-		if (replacePoints !== undefined && rewards[context.guild.id][replacePoints].type === "points") {
-			context.member.roles.remove(rewards[context.guild.id][replacePoints].role_id, "Meets higher criteria").catch(console.error);
+		if (replacePoints !== undefined && rewards[member.guild.id][replacePoints].type === "points") {
+			member.roles.remove(rewards[member.guild.id][replacePoints].role_id, "Meets higher criteria").catch(console.error);
 		}
-		if (replaceWins !== undefined && rewards[context.guild.id][replaceWins].type === "wins") {
-			context.member.roles.remove(rewards[context.guild.id][replaceWins].role_id, "Meets higher criteria").catch(console.error);
+		if (replaceWins !== undefined && rewards[member.guild.id][replaceWins].type === "wins") {
+			member.roles.remove(rewards[member.guild.id][replaceWins].role_id, "Meets higher criteria").catch(console.error);
 		}
 	} else {
-		if (replacePoints !== undefined && rewards[context.guild.id][replacePoints].type === "points") {
-			context.member.roles.add(rewards[context.guild.id][replacePoints].role_id, "No longer meets higher criteria").catch(console.error);
+		if (replacePoints !== undefined && rewards[member.guild.id][replacePoints].type === "points") {
+			member.roles.add(rewards[member.guild.id][replacePoints].role_id, "No longer meets higher criteria").catch(console.error);
 		}
-		if (replaceWins !== undefined && rewards[context.guild.id][replaceWins].type === "wins") {
-			context.member.roles.add(rewards[context.guild.id][replaceWins].role_id, "No longer meets higher criteria").catch(console.error);
+		if (replaceWins !== undefined && rewards[member.guild.id][replaceWins].type === "wins") {
+			member.roles.add(rewards[member.guild.id][replaceWins].role_id, "No longer meets higher criteria").catch(console.error);
 		}
 	}
 }

@@ -1,19 +1,18 @@
-import {Snowflake} from "discord.js";
+import {Guild, Snowflake} from "discord.js";
 import {createPointTransaction, PointTransaction} from "./PointTransaction.js";
-import {getRawUser} from "./BotUserContext.js";
 import {MultiplierSetting} from "../BotSettingProvider.js";
 
 type TransactionPart = {transaction: PointTransaction, factor: number};
 
 export class BulkPointTransaction {
-	private readonly guildId: Snowflake;
+	private readonly guild: Guild;
 	private readonly multiplier: MultiplierSetting | null;
 	private points: number;
 	private readonly wins: number;
 	private readonly parts: Map<Snowflake, TransactionPart> = new Map();
 
-	constructor(guildId: Snowflake, multiplier: MultiplierSetting | null, points: number, wins: number) {
-		this.guildId = guildId;
+	constructor(guild: Guild, multiplier: MultiplierSetting | null, points: number, wins: number) {
+		this.guild = guild;
 		this.multiplier = multiplier;
 		this.points = points;
 		this.wins = wins;
@@ -37,7 +36,7 @@ export class BulkPointTransaction {
 			return;
 		}
 
-		this.parts.set(userId, {transaction: await createPointTransaction(getRawUser(this.guildId, userId)!, this.multiplier, this.points * factor, this.wins), factor});
+		this.parts.set(userId, {transaction: await createPointTransaction(userId, this.guild, this.multiplier, this.points * factor, this.wins), factor});
 	}
 
 	getAppliedFactor(user: Snowflake) : number | undefined {

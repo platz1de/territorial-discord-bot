@@ -1,15 +1,14 @@
-import {Client, Collection, ColorResolvable, ContextMenuCommandBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, ApplicationCommandType, MessageFlags, ChatInputCommandInteraction} from "discord.js";
+import {Client, Collection, ContextMenuCommandBuilder, Events, GatewayIntentBits, GuildMember, REST, Routes, SlashCommandBuilder, ApplicationCommandType, MessageFlags, ChatInputCommandInteraction, Message} from "discord.js";
 import * as rewards from "./util/RewardManager.js";
-import * as db from "./db/DataBaseManager.js";
 import {sendUninitializedError} from "./util/EmbedUtil.js";
-import {handleDialog, hasDialog} from "./util/SetupDisalogUtil.js";
-import {BotUserContext, getUser} from "./util/BotUserContext.js";
+import {handleDialog, hasDialog} from "./util/SetupDialogUtil.js";
 import {removeServerSetting} from "./BotSettingProvider.js";
 import {handleMessage} from "./util/EntryMessageHandler.js";
 import {handleFeedInteraction} from "./util/ClaimWinFeed.js";
 import {handleChannelInteraction} from "./util/ClaimWinChannel.js";
 import {showProfileEmbed} from "./commands/ProfileCommand.js";
 import rawSettings from "./config.json" with { type: "json" };
+import {db} from "./db/DataBaseManager.js";
 
 export interface config { token: string, unbelieva_app_id: string, unbelieva_bot_token: string, endpoint_self: string, btt_api_url: string, wss_secret: string, bot_owner: string};
 export const config: config = rawSettings as config;
@@ -60,20 +59,20 @@ client.once(Events.ClientReady, async () => {
 client.on(Events.InteractionCreate, async interaction => {
 	if (interaction.isContextMenuCommand()) {
 		if (!(interaction.member instanceof GuildMember)) return;
-		const context = getUser(interaction.member, interaction);
-		if (!(context instanceof BotUserContext)) return;
+		const context = createServerContext(interaction.guild);
+		if (!context) return;
 		if (interaction.commandType === ApplicationCommandType.User) {
 			let id = interaction.targetId;
 			if (!id) return;
 			await interaction.deferReply({flags: MessageFlags.Ephemeral});
-			await showProfileEmbed(context.toServerContext(), context.user, id, 0, interaction.editReply);
+			await showProfileEmbed(context, interaction.user, id, 0, interaction.editReply);
 		} else if (interaction.commandType === ApplicationCommandType.Message) {
 			let id = interaction.targetId;
 			if (!id) return;
 			let message = await interaction.channel?.messages.fetch(id);
 			if (!message) return;
 			await interaction.deferReply({flags: MessageFlags.Ephemeral});
-			await showProfileEmbed(context.toServerContext(), context.user, message.author.id, 0, interaction.editReply);
+			await showProfileEmbed(context, interaction.user, message.author.id, 0, interaction.editReply);
 		}
 		return;
 	}
@@ -108,12 +107,12 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 client.on(Events.MessageCreate, async message => {
-	if (message.author.bot || !(message.member instanceof GuildMember)) return;
+	if (message.author.bot || !message.guild) return;
 	if (message.content === "") return; //Ignore empty messages (missing indent)
 	try {
-		let context = getUser(message.member, message);
-		if (!(context instanceof BotUserContext)) {
-			if (hasDialog(message)) handleDialog(context, message.content);
+		let context = createServerContext(message.guild);
+		if (!context) {
+			if (hasDialog(message)) handleDialog(message as Message<true>);
 			else await message.reply(sendUninitializedError(message.author));
 			return;
 		}
@@ -133,7 +132,7 @@ client.on(Events.GuildDelete, async guild => {
 	console.log(`Left guild ${guild.name} (${guild.id})`);
 	console.log(`Deleting associated data...`);
 	removeServerSetting(guild.id);
-	db.deleteGuild(guild.id);
+	db.control.deleteGuild({guild: guild.id});
 });
 
 async function registerCommand(file: string) {
@@ -175,4 +174,4 @@ import "./util/APIServer.js";
 import "./util/WebSocketServer.js";
 import {createServerContext, ServerContext} from "./util/ServerContext.js";
 
-export {db, rewards};
+export {rewards};

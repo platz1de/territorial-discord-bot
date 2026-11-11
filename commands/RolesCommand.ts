@@ -2,14 +2,11 @@ import {ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder} 
 import {PointCommand, rewards} from "../PointManager.js";
 import {Reward} from "../util/RewardManager.js";
 import {ServerContext} from "../util/ServerContext.js";
-import {getRawUser} from "../util/BotUserContext.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("roles").setDescription("See a list off all available role rewards"),
 	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
-		const userContext = getRawUser(context.guild.id, interaction.user.id);
-		if (!userContext) return;
-		const roles: Reward[] = rewards.getRewardList(userContext);
+		const roles: Reward[] = rewards.getRewardList(context.guild);
 		await interaction.editReply({
 			embeds: [
 				new EmbedBuilder().setAuthor({name: `Available reward roles`, iconURL: context.guild.iconURL() || undefined})

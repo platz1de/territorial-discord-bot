@@ -1,6 +1,5 @@
-import {ColorResolvable, EmbedBuilder, Guild, GuildMember, Message, TextChannel, User} from "discord.js";
+import {ColorResolvable, EmbedBuilder, Guild, GuildMember, Interaction, Message, TextChannel, User} from "discord.js";
 import {getServerContext, type MultiplierSetting, ServerSetting, updateSettings} from "../BotSettingProvider.js";
-import {InteractionTypes} from "./BaseUserContext.js";
 
 export type LimitedServerSettings = Omit<ServerSetting, "multiplier">;
 
@@ -14,7 +13,7 @@ export class ServerContext {
 	}
 
 	// TODO: remove undefined and null from this signature
-	hasModAccess(interaction: InteractionTypes | Message): boolean {
+	hasModAccess(interaction: Interaction | Message): boolean {
 		if (!interaction.member || !(interaction.member instanceof GuildMember)) return false;
 		for (const role of interaction.member.roles.cache.values() || []) {
 			if (this.settings.mod_roles.includes(role.id)) {

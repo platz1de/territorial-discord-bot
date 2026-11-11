@@ -1,5 +1,4 @@
-import {BaseMessageOptions, GuildMember, Interaction, InteractionEditReplyOptions, Message, MessagePayload} from "discord.js";
-import {InteractionTypes} from "./BaseUserContext.js";
+import {BaseMessageOptions, Message} from "discord.js";
 
 // TODO: remove this placeholder when we have proper contexts
 export function buildMessageReplyContext(message: Message) {

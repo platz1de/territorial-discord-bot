@@ -103,7 +103,7 @@ export async function handleChannelInteraction(interaction: Interaction) {
 		let points = parseInt(parts[2]) * (contest ? 2 : 1);
 		let factor = parts[3];
 
-		const transaction = new BulkPointTransaction(context.guild.id, context.getActiveMultiplier(), points, 1);
+		const transaction = new BulkPointTransaction(context.guild, context.getActiveMultiplier(), points, 1);
 		await transaction.apply(interaction.user.id, factor !== "n" && context.getSettings().factor_buttons[parseInt(factor)] ? context.getSettings().factor_buttons[parseInt(factor)].factor : 1);
 		interaction.reply({
 			embeds: [

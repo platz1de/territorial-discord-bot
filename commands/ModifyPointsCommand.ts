@@ -1,7 +1,6 @@
 import {ChatInputCommandInteraction, Colors, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, User} from "discord.js";
 import {PointCommand} from "../PointManager.js";
 import {createErrorEmbed} from "../util/EmbedUtil.js";
-import {getRawUser} from "../util/BotUserContext.js";
 import {createPointTransaction} from "../util/PointTransaction.js";
 import {ServerContext} from "../util/ServerContext.js";
 
@@ -26,7 +25,7 @@ export default {
 			await interaction.editReply(createErrorEmbed(interaction.user, "⚠ You need to specify a valid amount of points!"));
 			return;
 		}
-		const transaction = await createPointTransaction(getRawUser(context.guild.id, user.id)!, null, type === 0 ? points : 0, type === 0 ? 0 : points);
+		const transaction = await createPointTransaction(user.id, context.guild, null, type === 0 ? points : 0, type === 0 ? 0 : points);
 		context.logAction(interaction.user, `Modified ${type === 0 ? "points" : "wins"} from ${user} by ${points}`, Colors.Yellow);
 		await interaction.editReply({embeds: [new EmbedBuilder().setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()}).setDescription(transaction.buildDescription(false)).setTimestamp().setColor(Colors.Yellow).toJSON()]});
 	}

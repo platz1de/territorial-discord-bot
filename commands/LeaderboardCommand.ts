@@ -1,9 +1,9 @@
-import {ActionRowBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Guild, Message, SlashCommandBuilder, User} from "discord.js";
+import {ActionRowBuilder, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, Message, SlashCommandBuilder, User} from "discord.js";
 import {PointCommand} from "../PointManager.js";
 import {format} from "../util/EmbedUtil.js";
-import {BotUserContext, getRawUser} from "../util/BotUserContext.js";
 import {buildMessageReplyContext} from "../util/InteractionContext.js";
 import {ServerContext} from "../util/ServerContext.js";
+import {db} from "../db/DataBaseManager.js";
 
 export default {
 	slashData: new SlashCommandBuilder().setName("leaderboard").setDescription("Show the leaderboard")
@@ -19,12 +19,11 @@ export default {
 } as PointCommand;
 
 async function buildLeaderboardPage(context: ServerContext, user: User, page: number, wins: boolean, duration: number, reply: (content: BaseMessageOptions) => Promise<Message>) {
-	const userContext = getRawUser(context.guild.id, user.id);
-	if (!userContext) return;
 	if (isNaN(duration)) duration = 7;
-	const max: number = Math.ceil((duration === -1 ? userContext.getAllTimeEntryCount() : userContext.getDailyEntryCount(duration)) / 10);
+	const provider = duration === -1 ? db.total : db.daily;
+	const max: number = Math.ceil((provider.entryCount({guild: context.guild.id, duration})) / 10);
 	page = Math.max(1, Math.min(page, max));
-	const leaderboard = duration === -1 ? userContext.getAllTimeLeaderboard(wins, page) : userContext.getDailyLeaderboard(wins, duration, page);
+	const leaderboard = wins ? provider.leaderboard.wins({guild: context.guild.id, page, duration}) : provider.leaderboard.points({guild: context.guild.id, page, duration});
 	let start = new Date(), end = new Date();
 	if (duration !== -1) {
 		start.setUTCHours(0, 0, 0, 0);

@@ -1,7 +1,6 @@
 import {ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder} from "discord.js";
 import {PointCommand, rewards} from "../PointManager.js";
 import {Reward} from "../util/RewardManager.js";
-import {getRawUser} from "../util/BotUserContext.js";
 import {ServerContext} from "../util/ServerContext.js";
 
 export default {
@@ -11,14 +10,11 @@ export default {
 	execute: async (interaction: ChatInputCommandInteraction, context: ServerContext) => {
 		const user = interaction.options.getUser("member", true);
 		const member = await context.guild.members.fetch(user.id);
-		const newContext = getRawUser(context.guild.id, user.id);
-		if (!newContext || !member) {
+		if (!member) {
 			await interaction.editReply("Invalid member");
 			return;
 		}
-		const userContext = getRawUser(context.guild.id, user.id);
-		if (!userContext) return;
-		const eligible: Reward[] = await rewards.calculateEligibleRoles(userContext);
+		const eligible: Reward[] = await rewards.calculateEligibleRoles(user.id, context.guild);
 		if (context.getSettings().roles === "highest") {
 			const filtered = rewards.filterByHierarchy(eligible);
 			if (filtered.length > 0) {
